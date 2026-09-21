@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Jev フォーム入力",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "貼り付けた内容や登録した個人情報を、開いている画面の入力欄へ一括で入れる。送信・保存ボタンは押さない。",
   "permissions": [
     "storage",

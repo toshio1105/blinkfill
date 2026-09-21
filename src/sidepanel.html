@@ -2,80 +2,116 @@
 <html lang="ja">
 <head>
 <meta charset="utf-8">
-<title>Jev フォーム入力</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>フォーム入力</title>
 <link rel="stylesheet" href="sidepanel.css">
 </head>
 <body>
-  <header>
-    <h1>フォーム入力</h1>
-    <button class="ghost" id="toggleSettings" title="設定">設定</button>
+  <header class="top">
+    <div class="brand">
+      <span class="mark" aria-hidden="true">
+        <svg viewBox="0 0 24 24"><path d="M4 7h10M4 12h16M4 17h7" /><path d="M17 15l2 2 3-4" /></svg>
+      </span>
+      <span class="title">フォーム入力</span>
+    </div>
+    <button class="icon" id="toggleSettings" title="設定" aria-label="設定">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
+    </button>
   </header>
 
-  <section class="card">
-    <div class="row" style="margin-top:0">
-      <select id="profileSel" title="使うプロフィール"></select>
-      <button class="primary" id="fillProfile">個人情報を入力</button>
-    </div>
-    <p class="hint">ショートカット <b>Alt+Shift+P</b> でも同じことができます（パネルを開かずに入力）。</p>
-    <p class="status" id="profileStatus"></p>
-  </section>
-
-  <section id="profileEditor" class="card hide">
-    <div class="row" style="margin-top:0;justify-content:space-between">
-      <b id="profileTitle">プロフィール</b>
-      <span>
-        <button class="ghost" id="addProfile">＋追加</button>
-        <button class="ghost" id="delProfile">削除</button>
-      </span>
-    </div>
-    <div id="profileFields"></div>
-    <div class="row">
-      <button class="primary" id="saveProfile">保存</button>
-      <button class="ghost" id="closeProfile">閉じる</button>
-    </div>
-    <p class="hint">このPCのChromeの中だけに保存されます（外部には送りません）。Jevに送るのは欄の名前だけで、ここに入れた値は送りません。
-      パスワードやカード番号はここには登録できず、入力もしません。</p>
-  </section>
-
-  <section id="settings" class="card hide">
-    <label class="field">Jev APIキー
+  <!-- 設定（歯車で開閉） -->
+  <section id="settings" class="sheet hide">
+    <h2>設定</h2>
+    <label class="field">
+      <span class="lbl">Jev APIキー</span>
       <input type="password" id="apiKey" placeholder="apikey_..." autocomplete="off">
     </label>
-    <label class="check"><input type="checkbox" id="useJev"> Jevを使う（オフなら保存済みの対応と名前一致だけで入力）</label>
-    <p class="hint">Jevに送るのは「貼り付けた内容」と「欄の名前・選択肢」だけです。画面にすでに入っている値は送りません。</p>
-    <div class="row">
-      <button id="saveSettings">保存</button>
-      <button class="ghost" id="editProfile">個人情報を登録・編集</button>
-      <button class="ghost" id="forgetMap">この画面の対応表を消す</button>
-    </div>
-  </section>
-
-  <section class="card">
-    <label class="field">入れる内容
-      <textarea id="input" rows="7" placeholder='JSON、または「項目: 値」を1行ずつ。&#10;例)&#10;取引日: 2026/9/18&#10;出発地: 東京&#10;到着地: 新大阪&#10;金額: 14,720'></textarea>
+    <label class="switch">
+      <input type="checkbox" id="useJev">
+      <span class="track"><span class="thumb"></span></span>
+      <span>Jevを使う<small>オフにすると保存済みの対応と名前一致だけで入力（外部通信なし）</small></span>
     </label>
-    <div class="row hide" id="recordRow">
-      <label>明細 <select id="record"></select></label>
-    </div>
-    <div class="row">
-      <button class="primary" id="plan">読み取って割り当て</button>
-      <span class="status" id="status"></span>
+    <p class="note">Jevに送るのは「貼り付けた内容」と「欄の名前・選択肢」だけ。画面に入っている値や、登録した個人情報の値は送りません。</p>
+    <div class="actions">
+      <button class="btn primary" id="saveSettings">保存</button>
+      <button class="btn" id="editProfile">個人情報を編集</button>
+      <button class="btn ghost danger" id="forgetMap">この画面の学習を消す</button>
     </div>
   </section>
 
-  <section class="card hide" id="planCard">
-    <table>
-      <thead><tr><th></th><th>欄</th><th>入れる値</th><th>根拠</th></tr></thead>
-      <tbody id="planBody"></tbody>
-    </table>
-    <p class="hint" id="skipped"></p>
-    <div class="row">
-      <button class="primary" id="fill">入力する</button>
-      <button class="ghost" id="remember">この対応を保存</button>
-      <button class="ghost" id="clear">枠を消す</button>
-    </div>
-    <p class="hint">保存・提出ボタンは押しません。内容を確認してから、ご自身で押してください。</p>
-  </section>
+  <nav class="tabs" role="tablist">
+    <button class="tab active" data-tab="personal" role="tab">個人情報</button>
+    <button class="tab" data-tab="paste" role="tab">貼り付けて入力</button>
+  </nav>
+
+  <!-- ===== 個人情報タブ ===== -->
+  <main id="tab-personal" class="pane">
+    <section class="card hero">
+      <div class="field">
+        <span class="lbl">使うプロフィール</span>
+        <div class="with-btn">
+          <div class="select"><select id="profileSel" aria-label="使うプロフィール"></select></div>
+          <button class="btn" id="editProfile2">編集</button>
+        </div>
+      </div>
+      <button class="btn primary big" id="fillProfile">
+        <svg viewBox="0 0 24 24"><path d="M5 12l4 4L19 6"/></svg>
+        個人情報を入力
+      </button>
+      <p class="hint">ショートカット <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>P</kbd> でパネルを開かずに入力</p>
+      <p class="status" id="profileStatus" role="status"></p>
+    </section>
+
+    <section id="profileEditor" class="card hide">
+      <div class="card-head">
+        <h2 id="profileTitle">プロフィール</h2>
+        <div class="mini">
+          <button class="btn ghost sm" id="addProfile">＋ 追加</button>
+          <button class="btn ghost sm danger" id="delProfile">削除</button>
+        </div>
+      </div>
+      <div id="profileFields"></div>
+      <div class="actions sticky">
+        <button class="btn primary" id="saveProfile">保存</button>
+        <button class="btn" id="closeProfile">閉じる</button>
+      </div>
+      <p class="note">このPCのChromeの中だけに保存（暗号化なし）。共用PCでは登録しないでください。パスワード・カード番号は登録も入力もしません。</p>
+    </section>
+  </main>
+
+  <!-- ===== 貼り付けタブ ===== -->
+  <main id="tab-paste" class="pane hide">
+    <section class="card">
+      <label class="field">
+        <span class="lbl">入れる内容</span>
+        <textarea id="input" rows="7" placeholder='JSON、または「項目: 値」を1行ずつ。&#10;例)&#10;取引日: 2026/9/18&#10;出発地: 東京&#10;到着地: 新大阪&#10;金額: 14,720'></textarea>
+      </label>
+      <label class="field hide" id="recordRow">
+        <span class="lbl">明細</span>
+        <div class="select"><select id="record"></select></div>
+      </label>
+      <button class="btn primary big" id="plan">
+        <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6"/><path d="M20 20l-4.5-4.5"/></svg>
+        読み取って割り当て
+      </button>
+      <p class="status" id="status" role="status"></p>
+    </section>
+
+    <section class="card hide" id="planCard">
+      <div class="card-head"><h2>割り当て</h2><span class="legend"><i class="c-saved"></i>保存済み <i class="c-name"></i>名前一致 <i class="c-jev"></i>Jev</span></div>
+      <table class="plan">
+        <thead><tr><th></th><th>欄</th><th>入れる値</th><th>根拠</th></tr></thead>
+        <tbody id="planBody"></tbody>
+      </table>
+      <p class="note" id="skipped"></p>
+      <div class="actions">
+        <button class="btn primary" id="fill">入力する</button>
+        <button class="btn" id="remember">この対応を保存</button>
+        <button class="btn ghost" id="clear">枠を消す</button>
+      </div>
+      <p class="hint">保存・提出ボタンは押しません。確認してからご自身で。</p>
+    </section>
+  </main>
 
   <script type="module" src="sidepanel.js"></script>
 </body>

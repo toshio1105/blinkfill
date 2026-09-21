@@ -1,37 +1,130 @@
 :root{
-  --bg:#fbfaf8; --panel:#fff; --ink:#1d1c1a; --muted:#6b6862; --line:#e3e0da;
-  --accent:#c8643c; --ok:#2f7d5c; --ng:#b4453a; --warn:#a88418; --chip:#efece6;
+  --bg:#f6f4f0; --panel:#ffffff; --ink:#1c1b19; --muted:#6f6b64; --faint:#9a958d;
+  --line:#e6e2da; --field:#fbfaf8; --hover:#f1eee8;
+  --accent:#c8643c; --accent-ink:#fff; --accent-soft:#f7e6dd;
+  --ok:#2f7d5c; --ng:#b4453a; --warn:#a88418;
+  --c-saved:#2f7d5c; --c-name:#4a7ab8; --c-jev:#c8643c;
+  --r:10px; --shadow:0 1px 2px rgba(0,0,0,.04),0 4px 14px rgba(0,0,0,.04);
 }
 @media (prefers-color-scheme:dark){
-  :root{ --bg:#171714; --panel:#201f1c; --ink:#eceae6; --muted:#9a958c; --line:#34322d; --chip:#2c2a26; }
+  :root{
+    --bg:#141412; --panel:#1d1c1a; --ink:#ecebe7; --muted:#a19c93; --faint:#7a766e;
+    --line:#302e2a; --field:#232220; --hover:#292724;
+    --accent-soft:#3a2519; --shadow:none;
+  }
 }
 *{box-sizing:border-box}
-body{margin:0;padding:12px;background:var(--bg);color:var(--ink);
-  font:13px/1.6 "Yu Gothic UI","Hiragino Kaku Gothic ProN",system-ui,sans-serif}
-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
-h1{font-size:15px;margin:0}
-.card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px;margin-bottom:10px}
-.field{display:block;font-weight:600;font-size:12px;color:var(--muted)}
-.field input,.field textarea{display:block;width:100%;margin-top:4px;font:inherit;color:var(--ink);
-  background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:7px 9px;resize:vertical}
-.check{display:flex;gap:6px;align-items:flex-start;margin:10px 0 4px}
-.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px}
-button{font:inherit;border-radius:6px;border:1px solid var(--line);background:var(--panel);color:var(--ink);
-  padding:6px 12px;cursor:pointer}
-button.primary{background:var(--accent);border-color:transparent;color:#fff;font-weight:600}
-button.ghost{background:transparent}
-button:disabled{opacity:.5;cursor:default}
-select{font:inherit;padding:3px 6px;border-radius:6px;border:1px solid var(--line);background:var(--panel);color:var(--ink)}
-.status{font-size:12px;color:var(--muted)}
-.hint{font-size:11.5px;color:var(--muted);margin:8px 0 0}
-table{width:100%;border-collapse:collapse;font-size:12px}
-th{color:var(--muted);font-weight:600;text-align:left;padding:4px 4px;border-bottom:1px solid var(--line)}
-td{padding:5px 4px;border-bottom:1px solid var(--line);vertical-align:top;word-break:break-all}
-td.v{font-weight:600}
-.chip{display:inline-block;font-size:10.5px;padding:1px 6px;border-radius:99px;background:var(--chip);color:var(--muted);white-space:nowrap}
-.chip.saved{color:var(--ok)} .chip.low{color:var(--warn)}
+html{color-scheme:light dark}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font:13px/1.6 "Yu Gothic UI","Hiragino Sans","Hiragino Kaku Gothic ProN","Noto Sans JP",system-ui,sans-serif;
+  -webkit-font-smoothing:antialiased}
+svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none}
+
+/* --- ヘッダー --- */
+.top{position:sticky;top:0;z-index:5;display:flex;align-items:center;justify-content:space-between;
+  padding:12px 14px;background:var(--bg)}
+.brand{display:flex;align-items:center;gap:9px}
+.mark{display:grid;place-items:center;width:28px;height:28px;border-radius:8px;background:var(--accent);color:#fff}
+.mark svg{width:17px;height:17px}
+.title{font-size:15px;font-weight:700;letter-spacing:.02em}
+.icon{display:grid;place-items:center;width:32px;height:32px;border:0;border-radius:8px;background:transparent;color:var(--muted);cursor:pointer}
+.icon:hover{background:var(--hover);color:var(--ink)}
+.icon svg{width:18px;height:18px}
+
+/* --- タブ --- */
+.tabs{display:flex;gap:4px;margin:0 14px 10px;padding:3px;background:var(--hover);border-radius:10px}
+.tab{flex:1;border:0;background:transparent;color:var(--muted);font:inherit;font-weight:600;padding:7px 0;border-radius:8px;cursor:pointer}
+.tab.active{background:var(--panel);color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.08)}
+.pane{padding:0 14px 16px}
+
+/* --- カード --- */
+.card,.sheet{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:14px;margin-bottom:10px;box-shadow:var(--shadow)}
+.sheet{margin:0 14px 10px;border-color:var(--accent-soft)}
+.card-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px}
+h2{font-size:13.5px;margin:0 0 10px;font-weight:700}
+.card-head h2{margin:0}
+.mini{display:flex;gap:4px}
+
+/* --- 入力欄 --- */
+.field{display:block;margin-bottom:12px}
+.lbl{display:block;font-size:11.5px;font-weight:600;color:var(--muted);margin-bottom:5px;letter-spacing:.02em}
+input[type=text],input[type=password],input[type=email],input[type=tel],input[type=date],input:not([type]),textarea,select{
+  width:100%;font:inherit;color:var(--ink);background:var(--field);
+  border:1px solid var(--line);border-radius:8px;padding:8px 10px;min-height:36px;
+  transition:border-color .15s,box-shadow .15s,background .15s;outline:none}
+textarea{resize:vertical;line-height:1.55}
+input:hover,textarea:hover,select:hover{border-color:color-mix(in srgb,var(--line) 50%,var(--muted))}
+input:focus,textarea:focus,select:focus{border-color:var(--accent);background:var(--panel);
+  box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 22%,transparent)}
+::placeholder{color:var(--faint)}
+.select{position:relative}
+.with-btn{display:flex;gap:6px}
+.with-btn .select{flex:1;min-width:0}
+.select select{appearance:none;padding-right:30px;cursor:pointer}
+.select::after{content:"";position:absolute;right:12px;top:50%;width:7px;height:7px;margin-top:-5px;
+  border-right:2px solid var(--muted);border-bottom:2px solid var(--muted);transform:rotate(45deg);pointer-events:none}
+
+/* プロフィール編集: グループ見出し＋2列 */
+.group{margin:4px 0 14px}
+.group-title{font-size:11px;font-weight:700;color:var(--accent);letter-spacing:.08em;margin:0 0 8px;
+  display:flex;align-items:center;gap:8px}
+.group-title::after{content:"";flex:1;height:1px;background:var(--line)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:0 8px}
+.grid2 .field,.group>.field{margin-bottom:9px}
+
+/* スイッチ */
+.switch{display:flex;gap:10px;align-items:flex-start;margin:4px 0 10px;cursor:pointer}
+.switch input{position:absolute;opacity:0;pointer-events:none}
+.track{flex:none;width:34px;height:20px;border-radius:99px;background:var(--line);position:relative;transition:background .15s;margin-top:1px}
+.thumb{position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.25);transition:transform .15s}
+.switch input:checked+.track{background:var(--accent)}
+.switch input:checked+.track .thumb{transform:translateX(14px)}
+.switch input:focus-visible+.track{box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 25%,transparent)}
+.switch small{display:block;color:var(--muted);font-size:11.5px;line-height:1.45}
+
+/* --- ボタン --- */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;font:inherit;font-weight:600;
+  border:1px solid var(--line);background:var(--panel);color:var(--ink);border-radius:8px;
+  padding:7px 13px;cursor:pointer;transition:background .15s,border-color .15s,transform .05s}
+.btn:hover{background:var(--hover)}
+.btn:active{transform:translateY(1px)}
+.btn:disabled{opacity:.5;cursor:default;transform:none}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn.primary:hover{background:color-mix(in srgb,var(--accent) 88%,#000)}
+.btn.ghost{background:transparent;border-color:transparent;color:var(--muted)}
+.btn.ghost:hover{background:var(--hover);color:var(--ink)}
+.btn.danger{color:var(--ng)}
+.btn.sm{padding:4px 9px;font-size:12px}
+.btn.big{width:100%;padding:11px 14px;font-size:14px;border-radius:10px}
+.btn:focus-visible,.tab:focus-visible,.icon:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+.actions.sticky{position:sticky;bottom:0;background:var(--panel);padding:10px 0 2px;margin-top:0}
+
+/* --- 文字 --- */
+.hint{font-size:11.5px;color:var(--muted);margin:10px 0 0;text-align:center}
+.note{font-size:11.5px;color:var(--muted);margin:10px 0 0;line-height:1.55}
+kbd{font:600 10.5px/1 ui-monospace,Consolas,monospace;padding:2px 5px;border:1px solid var(--line);border-bottom-width:2px;border-radius:4px;background:var(--field);color:var(--ink)}
+.status{margin:10px 0 0;font-size:12px;min-height:0}
+.status:empty{display:none}
+.status.res-ok,.status.res-ng{padding:8px 10px;border-radius:8px}
+.status.res-ok{background:color-mix(in srgb,var(--ok) 12%,transparent);color:var(--ok)}
+.status.res-ng{background:color-mix(in srgb,var(--ng) 12%,transparent);color:var(--ng)}
 .res-ok{color:var(--ok)} .res-ng{color:var(--ng)}
-.hide{display:none}
-#profileSel{flex:1;min-width:0;padding:6px 8px}
-.pf{display:grid;grid-template-columns:120px 1fr;gap:6px;align-items:center;margin:5px 0;font-size:12px}
-.pf input{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:5px 7px;width:100%}
+
+/* --- 割り当て表 --- */
+.legend{font-size:11px;color:var(--muted);display:flex;gap:6px;align-items:center;white-space:nowrap}
+.legend i{display:inline-block;width:7px;height:7px;border-radius:50%;margin-left:4px}
+.c-saved{background:var(--c-saved)} .c-name{background:var(--c-name)} .c-jev{background:var(--c-jev)}
+table.plan{width:100%;border-collapse:collapse;font-size:12px}
+.plan th{color:var(--faint);font-weight:600;font-size:11px;text-align:left;padding:0 4px 6px;border-bottom:1px solid var(--line)}
+.plan td{padding:7px 4px;border-bottom:1px solid var(--line);vertical-align:top;word-break:break-all}
+.plan tr:last-child td{border-bottom:0}
+.plan td.v{font-weight:600}
+.plan input[type=checkbox]{accent-color:var(--accent);margin:2px 0 0}
+.chip{display:inline-flex;align-items:center;gap:4px;font-size:10.5px;padding:1px 7px;border-radius:99px;
+  background:var(--hover);color:var(--muted);white-space:nowrap}
+.chip::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--c-jev)}
+.chip.saved::before{background:var(--c-saved)} .chip.name::before{background:var(--c-name)}
+.chip.low{color:var(--warn)}
+
+.hide{display:none!important}

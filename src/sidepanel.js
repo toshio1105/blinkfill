@@ -126,7 +126,7 @@ function render() {
       <td><input type="checkbox" data-i="${i}" ${low ? '' : 'checked'}></td>
       <td>${esc(p.label)}</td>
       <td class="v">${esc(p.value)}</td>
-      <td><span class="chip ${p.source === 'saved' ? 'saved' : ''} ${low ? 'low' : ''}">${srcLabel[p.source]}${conf}</span>
+      <td><span class="chip ${p.source} ${low ? 'low' : ''}">${srcLabel[p.source]}${conf}</span>
           <span id="r${i}"></span></td></tr>`;
   }).join('') || '<tr><td colspan="4">割り当てられる欄がありませんでした</td></tr>';
 
@@ -230,19 +230,51 @@ $('fillProfile').onclick = async () => {
   }
 };
 
+// 編集画面の並び。配列は2列に並べる組
+const LAYOUT = [
+  ['お名前', [['lastName', 'firstName'], ['lastNameKana', 'firstNameKana']]],
+  ['連絡先', ['email', ['phone', 'mobile']]],
+  ['住所', [['postalCode', 'prefecture'], 'city', 'street', 'building']],
+  ['勤務先', ['company', ['department', 'jobTitle']]],
+  ['その他', ['birthday']],
+];
+const TYPES = { email: 'email', phone: 'tel', mobile: 'tel', birthday: 'date' };
+
 async function openEditor(name) {
   const { profiles, active } = await refreshProfiles();
   editing = name || active;
   const p = profiles[editing] || {};
+  const byKey = Object.fromEntries(PROFILE_SCHEMA.map((f) => [f.key, f]));
+  const field = (k) => {
+    const f = byKey[k];
+    return `<label class="field"><span class="lbl">${esc(f.label)}</span>
+      <input type="${TYPES[k] || 'text'}" data-k="${k}" value="${esc(p[k] || '')}" placeholder="${f.example ? '例）' + esc(f.example) : ''}" autocomplete="off"></label>`;
+  };
   $('profileTitle').textContent = `プロフィール：${editing}`;
-  $('profileFields').innerHTML = PROFILE_SCHEMA.map((f) => `
-    <label class="pf"><span>${esc(f.label)}</span>
-      <input data-k="${f.key}" value="${esc(p[f.key] || '')}" placeholder="${esc(f.example)}"
-        ${f.key === 'birthday' ? 'type="date"' : ''} autocomplete="off"></label>`).join('');
+  $('profileFields').innerHTML = LAYOUT.map(([title, rows]) => `
+    <div class="group"><p class="group-title">${title}</p>
+      ${rows.map((r) => (Array.isArray(r) ? `<div class="grid2">${r.map(field).join('')}</div>` : field(r))).join('')}
+    </div>`).join('');
   $('profileEditor').classList.remove('hide');
+  $('profileEditor').scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
-$('editProfile').onclick = () => openEditor();
+// --- タブ -------------------------------------------------------------------
+function showTab(name) {
+  document.querySelectorAll('.tab').forEach((t) => t.classList.toggle('active', t.dataset.tab === name));
+  $('tab-personal').classList.toggle('hide', name !== 'personal');
+  $('tab-paste').classList.toggle('hide', name !== 'paste');
+  chrome.storage.local.set({ lastTab: name });
+}
+document.querySelectorAll('.tab').forEach((t) => { t.onclick = () => showTab(t.dataset.tab); });
+chrome.storage.local.get('lastTab').then((s) => showTab(s.lastTab === 'paste' ? 'paste' : 'personal'));
+
+$('editProfile2').onclick = () => openEditor($('profileSel').value);
+$('editProfile').onclick = () => {
+  $('settings').classList.add('hide');
+  showTab('personal');
+  openEditor();
+};
 $('closeProfile').onclick = () => $('profileEditor').classList.add('hide');
 
 $('saveProfile').onclick = async () => {
