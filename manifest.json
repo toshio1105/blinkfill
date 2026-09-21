@@ -1,14 +1,38 @@
 {
   "manifest_version": 3,
   "name": "Jev フォーム入力",
-  "version": "0.1.0",
-  "description": "貼り付けた内容を、開いている画面の入力欄へ一括で入れる。送信・保存ボタンは押さない。",
-  "permissions": ["storage", "scripting", "activeTab", "sidePanel"],
-  "host_permissions": ["<all_urls>"],
-  "background": { "service_worker": "src/background.js", "type": "module" },
-  "side_panel": { "default_path": "src/sidepanel.html" },
-  "action": { "default_title": "Jev フォーム入力 (Alt+J)" },
+  "version": "0.2.0",
+  "description": "貼り付けた内容や登録した個人情報を、開いている画面の入力欄へ一括で入れる。送信・保存ボタンは押さない。",
+  "permissions": [
+    "storage",
+    "scripting",
+    "activeTab",
+    "sidePanel"
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ],
+  "background": {
+    "service_worker": "src/background.js",
+    "type": "module"
+  },
+  "side_panel": {
+    "default_path": "src/sidepanel.html"
+  },
+  "action": {
+    "default_title": "Jev フォーム入力 (Alt+J)"
+  },
   "commands": {
-    "_execute_action": { "suggested_key": { "default": "Alt+J" } }
+    "_execute_action": {
+      "suggested_key": {
+        "default": "Alt+J"
+      }
+    },
+    "fill-profile": {
+      "suggested_key": {
+        "default": "Alt+Shift+P"
+      },
+      "description": "個人情報をワンクリック入力"
+    }
   }
 }

@@ -11,6 +11,32 @@
     <button class="ghost" id="toggleSettings" title="設定">設定</button>
   </header>
 
+  <section class="card">
+    <div class="row" style="margin-top:0">
+      <select id="profileSel" title="使うプロフィール"></select>
+      <button class="primary" id="fillProfile">個人情報を入力</button>
+    </div>
+    <p class="hint">ショートカット <b>Alt+Shift+P</b> でも同じことができます（パネルを開かずに入力）。</p>
+    <p class="status" id="profileStatus"></p>
+  </section>
+
+  <section id="profileEditor" class="card hide">
+    <div class="row" style="margin-top:0;justify-content:space-between">
+      <b id="profileTitle">プロフィール</b>
+      <span>
+        <button class="ghost" id="addProfile">＋追加</button>
+        <button class="ghost" id="delProfile">削除</button>
+      </span>
+    </div>
+    <div id="profileFields"></div>
+    <div class="row">
+      <button class="primary" id="saveProfile">保存</button>
+      <button class="ghost" id="closeProfile">閉じる</button>
+    </div>
+    <p class="hint">このPCのChromeの中だけに保存されます（外部には送りません）。Jevに送るのは欄の名前だけで、ここに入れた値は送りません。
+      パスワードやカード番号はここには登録できず、入力もしません。</p>
+  </section>
+
   <section id="settings" class="card hide">
     <label class="field">Jev APIキー
       <input type="password" id="apiKey" placeholder="apikey_..." autocomplete="off">
@@ -19,6 +45,7 @@
     <p class="hint">Jevに送るのは「貼り付けた内容」と「欄の名前・選択肢」だけです。画面にすでに入っている値は送りません。</p>
     <div class="row">
       <button id="saveSettings">保存</button>
+      <button class="ghost" id="editProfile">個人情報を登録・編集</button>
       <button class="ghost" id="forgetMap">この画面の対応表を消す</button>
     </div>
   </section>

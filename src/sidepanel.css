@@ -32,3 +32,6 @@ td.v{font-weight:600}
 .chip.saved{color:var(--ok)} .chip.low{color:var(--warn)}
 .res-ok{color:var(--ok)} .res-ng{color:var(--ng)}
 .hide{display:none}
+#profileSel{flex:1;min-width:0;padding:6px 8px}
+.pf{display:grid;grid-template-columns:120px 1fr;gap:6px;align-items:center;margin:5px 0;font-size:12px}
+.pf input{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:5px 7px;width:100%}

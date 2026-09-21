@@ -112,7 +112,12 @@
         registry.push(el);
         el.setAttribute(ATTR, id);
         const label = labelOf(el) || `(無名の${type}欄)`;
-        const field = { id, label, type, name: el.name || '', signature: `${label}|${el.name || ''}|${type}` };
+        const field = {
+          id, label, type, name: el.name || '', signature: `${label}|${el.name || ''}|${type}`,
+          autocomplete: el.getAttribute('autocomplete') || '',
+          placeholder: el.getAttribute('placeholder') || '',
+          maxLength: el.maxLength > 0 ? el.maxLength : 0,
+        };
         if (type === 'select') {
           field.options = [...el.options]
             .filter((o) => !o.disabled && clean(o.text) && o.value !== '')
@@ -162,8 +167,12 @@
   function fillSelect(el, value) {
     const want = clean(value);
     const opts = [...el.options];
+    const num = /^\d+$/.test(want) ? Number(want) : null;
+    const digitsOf = (s) => (String(s).match(/^\D*(\d+)\D*$/) || [])[1];
     const hit = opts.find((o) => o.value === value)
       || opts.find((o) => clean(o.text) === want)
+      // 数字（誕生月「1」など）は "01" / "1月" / "1日" と数値で照合する。部分一致だと「10月」に当たる
+      || (num != null && opts.find((o) => Number(digitsOf(o.value)) === num || Number(digitsOf(clean(o.text))) === num))
       || opts.find((o) => want && (clean(o.text).includes(want) || want.includes(clean(o.text))) && clean(o.text));
     if (!hit) return 'no-option';
     el.focus();

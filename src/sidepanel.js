@@ -1,4 +1,6 @@
 import { parseInput, makePlan, toSaved, MIN_CONFIDENCE } from './plan.js';
+import { PROFILE_SCHEMA } from './profile.js';
+import { loadProfiles, fillProfile } from './oneclick.js';
 
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
@@ -200,4 +202,78 @@ $('clear').onclick = async () => {
   }).catch(() => {});
 };
 
+// --- 個人情報（プロフィール） ----------------------------------------------
+let editing = null;
+
+async function refreshProfiles() {
+  const { profiles, active } = await loadProfiles();
+  $('profileSel').innerHTML = Object.keys(profiles)
+    .map((n) => `<option ${n === active ? 'selected' : ''}>${esc(n)}</option>`).join('');
+  return { profiles, active };
+}
+
+$('profileSel').onchange = () => chrome.storage.local.set({ activeProfile: $('profileSel').value });
+
+$('fillProfile').onclick = async () => {
+  $('fillProfile').disabled = true;
+  try {
+    const tab = await activeTab();
+    if (!/^https?:/.test(tab.url || '')) throw new Error('このページでは使えません');
+    const r = await fillProfile(tab.id, $('profileSel').value);
+    $('profileStatus').className = 'status ' + (r.ok ? 'res-ok' : 'res-ng');
+    $('profileStatus').textContent = r.message;
+  } catch (e) {
+    $('profileStatus').className = 'status res-ng';
+    $('profileStatus').textContent = e.message;
+  } finally {
+    $('fillProfile').disabled = false;
+  }
+};
+
+async function openEditor(name) {
+  const { profiles, active } = await refreshProfiles();
+  editing = name || active;
+  const p = profiles[editing] || {};
+  $('profileTitle').textContent = `プロフィール：${editing}`;
+  $('profileFields').innerHTML = PROFILE_SCHEMA.map((f) => `
+    <label class="pf"><span>${esc(f.label)}</span>
+      <input data-k="${f.key}" value="${esc(p[f.key] || '')}" placeholder="${esc(f.example)}"
+        ${f.key === 'birthday' ? 'type="date"' : ''} autocomplete="off"></label>`).join('');
+  $('profileEditor').classList.remove('hide');
+}
+
+$('editProfile').onclick = () => openEditor();
+$('closeProfile').onclick = () => $('profileEditor').classList.add('hide');
+
+$('saveProfile').onclick = async () => {
+  const { profiles } = await loadProfiles();
+  const p = {};
+  document.querySelectorAll('#profileFields input').forEach((i) => { if (i.value.trim()) p[i.dataset.k] = i.value.trim(); });
+  profiles[editing] = p;
+  await chrome.storage.local.set({ profiles, activeProfile: editing });
+  await refreshProfiles();
+  $('profileStatus').className = 'status res-ok';
+  $('profileStatus').textContent = `「${editing}」を保存しました（${Object.keys(p).length}項目）`;
+};
+
+$('addProfile').onclick = async () => {
+  const name = prompt('プロフィールの名前（例: 会社、家族）');
+  if (!name?.trim()) return;
+  const { profiles } = await loadProfiles();
+  if (!profiles[name.trim()]) profiles[name.trim()] = {};
+  await chrome.storage.local.set({ profiles, activeProfile: name.trim() });
+  openEditor(name.trim());
+};
+
+$('delProfile').onclick = async () => {
+  const { profiles } = await loadProfiles();
+  if (Object.keys(profiles).length <= 1) { alert('最後の1つは削除できません'); return; }
+  if (!confirm(`「${editing}」を削除しますか？`)) return;
+  delete profiles[editing];
+  await chrome.storage.local.set({ profiles, activeProfile: Object.keys(profiles)[0] });
+  $('profileEditor').classList.add('hide');
+  refreshProfiles();
+};
+
 loadSettings().then(refreshRecordPicker);
+refreshProfiles();
