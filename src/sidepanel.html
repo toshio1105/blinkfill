@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<title>Jev フォーム入力</title>
+<link rel="stylesheet" href="sidepanel.css">
+</head>
+<body>
+  <header>
+    <h1>フォーム入力</h1>
+    <button class="ghost" id="toggleSettings" title="設定">設定</button>
+  </header>
+
+  <section id="settings" class="card hide">
+    <label class="field">Jev APIキー
+      <input type="password" id="apiKey" placeholder="apikey_..." autocomplete="off">
+    </label>
+    <label class="check"><input type="checkbox" id="useJev"> Jevを使う（オフなら保存済みの対応と名前一致だけで入力）</label>
+    <p class="hint">Jevに送るのは「貼り付けた内容」と「欄の名前・選択肢」だけです。画面にすでに入っている値は送りません。</p>
+    <div class="row">
+      <button id="saveSettings">保存</button>
+      <button class="ghost" id="forgetMap">この画面の対応表を消す</button>
+    </div>
+  </section>
+
+  <section class="card">
+    <label class="field">入れる内容
+      <textarea id="input" rows="7" placeholder='JSON、または「項目: 値」を1行ずつ。&#10;例)&#10;取引日: 2026/9/18&#10;出発地: 東京&#10;到着地: 新大阪&#10;金額: 14,720'></textarea>
+    </label>
+    <div class="row hide" id="recordRow">
+      <label>明細 <select id="record"></select></label>
+    </div>
+    <div class="row">
+      <button class="primary" id="plan">読み取って割り当て</button>
+      <span class="status" id="status"></span>
+    </div>
+  </section>
+
+  <section class="card hide" id="planCard">
+    <table>
+      <thead><tr><th></th><th>欄</th><th>入れる値</th><th>根拠</th></tr></thead>
+      <tbody id="planBody"></tbody>
+    </table>
+    <p class="hint" id="skipped"></p>
+    <div class="row">
+      <button class="primary" id="fill">入力する</button>
+      <button class="ghost" id="remember">この対応を保存</button>
+      <button class="ghost" id="clear">枠を消す</button>
+    </div>
+    <p class="hint">保存・提出ボタンは押しません。内容を確認してから、ご自身で押してください。</p>
+  </section>
+
+  <script type="module" src="sidepanel.js"></script>
+</body>
+</html>

@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<title>経費明細の入力（テスト用の模擬画面）</title>
+<style>
+  body{font:14px system-ui,sans-serif;margin:24px;max-width:720px}
+  .row{display:grid;grid-template-columns:160px 1fr;gap:10px;align-items:center;margin:8px 0}
+  input,select,textarea{font:inherit;padding:5px}
+  #log{font:12px monospace;color:#666}
+</style>
+</head>
+<body>
+<h1>経費明細</h1>
+<form id="f" onsubmit="event.preventDefault(); window.__submitCount++;">
+  <!-- 普通の label for -->
+  <div class="row"><label for="expType">経費タイプ</label>
+    <select id="expType" name="ExpenseType">
+      <option value="">選択してください</option>
+      <option value="TRN01">国内交通費（新幹線・特急）</option>
+      <option value="TRN02">国内交通費（在来線・バス）</option>
+      <option value="TAXI">タクシー代</option>
+      <option value="HOTEL">宿泊費</option>
+      <option value="MEAL">会議費</option>
+      <option value="ENT">交際費</option>
+      <option value="AIR">航空運賃</option>
+      <option value="DAILY">国内出張手当</option>
+    </select></div>
+
+  <div class="row"><label for="txDate">取引日</label><input type="date" id="txDate" name="TransactionDate"></div>
+
+  <!-- 表形式: ラベルが直前の要素にだけある -->
+  <div class="row"><span>出発地</span><input name="FromLocation"></div>
+
+  <!-- shadow DOM の中の入力欄（SAP / KAT-INPUT 系を模したもの） -->
+  <div class="row"><span></span><x-field label="到着地"></x-field></div>
+
+  <!-- React 風: 内部状態を input イベントでしか更新せず、blur で状態から描き直す -->
+  <div class="row"><label for="amount">金額（円）</label><input id="amount" name="TransactionAmount" inputmode="numeric"></div>
+
+  <div class="row"><label for="cur">通貨</label>
+    <select id="cur" name="Currency"><option value="JPY">日本円</option><option value="USD">米ドル</option></select></div>
+
+  <div class="row"><label for="vendor">用務先</label><input id="vendor" name="Vendor" placeholder="訪問先の会社名"></div>
+  <div class="row"><label for="purpose">目的</label><textarea id="purpose" name="Purpose" rows="2"></textarea></div>
+
+  <div class="row"><label for="receipt">領収書区分</label>
+    <select id="receipt" name="ReceiptType">
+      <option value="">—</option><option value="E">電子領収書</option><option value="P">紙の領収書</option><option value="N">領収書なし</option>
+    </select></div>
+
+  <!-- 触ってはいけないもの -->
+  <div class="row"><label for="pw">承認用パスワード</label><input type="password" id="pw" name="ApprovalPassword"></div>
+  <div class="row"><label for="card">法人カード番号</label><input id="card" name="card_number" autocomplete="cc-number"></div>
+  <div class="row"><label for="ro">伝票番号</label><input id="ro" name="ReportId" value="R-000123" readonly></div>
+  <input type="hidden" name="csrf" value="secret-token">
+
+  <div class="row"><span>備考（iframe内）</span>
+    <iframe id="ifr" style="height:44px;border:1px solid #ccc" srcdoc='<label>備考 <input name="Comment" style="width:260px"></label>'></iframe></div>
+
+  <button type="submit" id="submit">提出</button>
+  <button type="button" id="save" onclick="window.__saveCount++">保存</button>
+</form>
+<div id="log"></div>
+
+<script>
+  window.__submitCount = 0;
+  window.__saveCount = 0;
+
+  // shadow DOM を持つカスタム要素
+  customElements.define('x-field', class extends HTMLElement {
+    connectedCallback() {
+      const r = this.attachShadow({ mode: 'open' });
+      r.innerHTML = '<input part="i" name="ToLocation" style="font:inherit;padding:5px">';
+    }
+  });
+
+  // React の制御コンポーネントの挙動を模す
+  (() => {
+    const el = document.getElementById('amount');
+    let state = '';
+    el.addEventListener('input', () => { state = el.value; });
+    el.addEventListener('blur', () => {
+      // 状態から描き直す（input イベントなしで value だけ変えても元に戻る）
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(el, state);
+    });
+    window.__amountState = () => state;
+  })();
+</script>
+</body>
+</html>
