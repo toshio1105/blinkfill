@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "Jev フォーム入力",
-  "version": "0.2.2",
-  "description": "貼り付けた内容や登録した個人情報を、開いている画面の入力欄へ一括で入れる。送信・保存ボタンは押さない。",
+  "name": "BlinkFill",
+  "version": "0.3.0",
+  "description": "まばたきする間にフォームを埋める。登録した個人情報や貼り付けた内容を一括入力し、送信ボタンは押さない。",
   "permissions": [
     "storage",
     "scripting",
@@ -20,7 +20,7 @@
     "default_path": "src/sidepanel.html"
   },
   "action": {
-    "default_title": "Jev フォーム入力 (Alt+J)",
+    "default_title": "BlinkFill（Alt+J）",
     "default_icon": {
       "16": "icons/icon16.png",
       "32": "icons/icon32.png",
@@ -45,5 +45,6 @@
     "32": "icons/icon32.png",
     "48": "icons/icon48.png",
     "128": "icons/icon128.png"
-  }
+  },
+  "short_name": "BlinkFill"
 }
