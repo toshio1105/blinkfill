@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "BlinkFill",
-  "version": "0.3.0",
-  "description": "まばたきする間にフォームを埋める。登録した個人情報や貼り付けた内容を一括入力し、送信ボタンは押さない。",
+  "name": "BlinkFill - フォーム自動入力ツール",
+  "version": "0.3.1",
+  "description": "個人情報のワンクリック入力、貼り付けた内容の一括入力、画面ごとの学習で、フォーム入力を一瞬で完了",
   "permissions": [
     "storage",
     "scripting",
