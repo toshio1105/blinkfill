@@ -5,6 +5,7 @@
 - **個人情報のワンクリック入力** — 氏名・フリガナ・メール・電話・住所・勤務先・生年月日を登録しておき、ボタン1つ（または <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>P</kbd>）で入力
 - **貼り付けた内容の一括入力** — 経費精算や勤怠のように、毎回同じ画面に同じ種類の項目を打つ作業を、JSON や「項目: 値」を貼るだけで一括入力
 - **よく使う画面の入力先を記憶** — 一度確認した画面は、次回からAIに問い合わせずに一瞬で入力
+- **定型入力（ひな形）** — 毎回同じ値（通貨・区分など）は固定し、日付・金額など変わる値だけを打つ。時刻の足し引きや「○時以前なら有」の判定もひな形に書ける
 
 **送信・保存ボタンは押しません。** 入力までで止めるので、確認と送信はご自身で行ってください。
 
@@ -52,6 +53,37 @@
 
 どの AI でも、テスト用のフォームでは同じ欄を同じ値で埋めました。
 
+## 定型入力（ひな形）
+
+経費精算のように「半分は毎回同じ値、残りだけが変わる」画面向けです。ひな形を JSON ファイルに書き、設定（歯車）の **ひな形ファイルを読み込む** から取り込みます。「定型入力」タブでひな形を選び、変わる値だけを入れて **この画面に割り当て** を押すと、あとは「貼り付けて入力」と同じ流れ（記憶済み → 名前一致 → AI）で欄に割り当てます。
+
+ひな形はあなたのChromeの中だけに保存されます。会社固有の区分や社内ルールを書いたファイルは、公開リポジトリに置かないでください。
+
+```jsonc
+{
+  "name": "経費精算",                     // セット名（同じ名前で読み込むと上書き）
+  "templates": [{
+    "name": "出張手当（日帰り）",
+    "fixed":  { "経費タイプ": "出張手当", "宿泊数": "0" },       // いつも同じ値
+    "fields": [                                                   // 毎回入れる値
+      { "key": "出発日", "type": "date" },
+      { "key": "帰着日", "type": "date", "defaultFrom": "出発日" },  // 空欄なら出発日と同じ
+      { "key": "列車の出発時刻", "type": "time", "fill": false }      // 計算にだけ使い、画面には入れない
+    ],
+    "computed": [                                                 // 計算して入れる値
+      { "key": "出発時刻", "op": "addMinutes", "from": "列車の出発時刻", "subtract": [30] },
+      { "key": "早出", "op": "compareTime", "from": "出発時刻", "lte": "08:00", "then": "有", "else": "無" }
+    ],
+    "notes": ["入力時の注意をパネルに表示"]
+  }]
+}
+```
+
+- `key` は画面の欄の名前に合わせると、AIなしの「名前一致」で入ります
+- `type`: `text` / `date` / `time` / `number` / `select`（`options` で選択肢）
+- 計算（`op`）: `addMinutes`（時刻の足し引き。`add` / `subtract` に分数か欄名）、`compareTime`（`lte` か `gte` と `then` / `else`）、`days`（`start`〜`end` の日数）、`multiply`（`from` × `by`）、`format`（`"領収書_{出発地}→{到着地}.pdf"` のような文字列。`fill: false` にするとコピー用に表示）
+- 例: [examples/templates-sample.json](examples/templates-sample.json)
+
 ## プライバシー
 
 - **登録した個人情報とAPIキーは、あなたのChromeの中（`chrome.storage.local`）だけに保存されます。** 作者を含め、誰にも送られません。暗号化はされないので、共用PCでは登録しないでください
@@ -67,6 +99,7 @@ npm install                 # SDK と esbuild（vendor/ の再生成にだけ使
 npm run vendor              # vendor/anthropic.js を作り直す
 node test/serve.mjs         # http://localhost:5188 に模擬画面（/ 経費、/profile 会員登録、/panel サイドパネル）
 ENV_FILE=path/to/.env node test/providers-e2e.mjs   # 各AIで割り当てと送信内容を検査
+node test/templates-test.mjs  # 定型入力（ひな形の展開と計算）。外部通信なし
 ```
 
 拡張機能そのものはビルド不要です。Claude 用の公式SDKは `vendor/anthropic.js` に1ファイルで同梱しています。
@@ -78,6 +111,7 @@ manifest.json
 src/core.js        ページ内で動く部分（欄の読み取り・入力。送信ボタンは押さない）
 src/profile.js     個人情報の判定（autocomplete → 欄名のパターン → 分割欄 → AI）
 src/plan.js        貼り付けた内容の割り当て（記憶済み → 名前一致 → AI）
+src/templates.js   定型入力（ひな形の検査・展開・計算）
 src/ai.js          Jev / OpenAI / Claude / Gemini の呼び出し
 src/config.js      AI の設定の保存
 src/sidepanel.*    サイドパネルの画面

@@ -48,7 +48,7 @@ h2{font-size:13.5px;margin:0 0 10px;font-weight:700}
 /* --- 入力欄 --- */
 .field{display:block;margin-bottom:12px}
 .lbl{display:block;font-size:11.5px;font-weight:600;color:var(--muted);margin-bottom:5px;letter-spacing:.02em}
-input[type=text],input[type=password],input[type=email],input[type=tel],input[type=date],input:not([type]),textarea,select{
+input[type=text],input[type=password],input[type=email],input[type=tel],input[type=date],input[type=time],input:not([type]),textarea,select{
   width:100%;font:inherit;color:var(--ink);background:var(--field);
   border:1px solid var(--line);border-radius:8px;padding:8px 10px;min-height:36px;
   transition:border-color .15s,box-shadow .15s,background .15s;outline:none}
@@ -143,3 +143,17 @@ table.plan{width:100%;border-collapse:collapse;font-size:12px}
 .lbl a:hover{text-decoration:underline}
 #aiBox.dim{opacity:.45;pointer-events:none}
 .hide{display:none!important}
+
+/* ===== 定型入力 ===== */
+.note.flush{margin:0}
+.tpl-hint{font-weight:400;color:var(--faint);margin-left:6px}
+.tpl-out{border:1px dashed var(--line);border-radius:8px;padding:8px 10px;margin:2px 0 12px;font-size:12px}
+.tpl-out .row{display:flex;justify-content:space-between;gap:8px;padding:3px 0}
+.tpl-out .k{color:var(--muted)}
+.tpl-out .v{font-weight:600;text-align:right;word-break:break-all}
+.tpl-out .v.flag{color:var(--accent)}
+.tpl-out .copy{border:0;background:transparent;color:var(--accent);font:inherit;font-size:11px;cursor:pointer;padding:0 0 0 6px}
+.tpl-notes{margin:0 0 12px;padding-left:18px;font-size:11.5px;color:var(--muted);line-height:1.55}
+.tpl-notes:empty{display:none}
+.set-row{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:12.5px;padding:4px 0}
+.set-row small{color:var(--muted)}

@@ -3,6 +3,7 @@ import { PROFILE_SCHEMA } from './profile.js';
 import { loadProfiles, fillProfile } from './oneclick.js';
 import { PROVIDERS } from './ai.js';
 import { getAIConfig, saveAIConfig, activeAI } from './config.js';
+import { validateSet, expand } from './templates.js';
 
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
@@ -80,9 +81,11 @@ async function activeTab() {
   return tab;
 }
 
+// 状態表示は、いま操作しているタブ（貼り付け / 定型入力）の欄に出す
+let statusId = 'status';
 function status(msg, cls = '') {
-  $('status').className = 'status ' + cls;
-  $('status').textContent = msg;
+  $(statusId).className = 'status ' + cls;
+  $(statusId).textContent = msg;
 }
 
 // --- 明細の選択（JSON 配列のとき） -----------------------------------------
@@ -102,13 +105,18 @@ $('input').addEventListener('input', () => {
 
 // --- 読み取り → 割り当て ---------------------------------------------------
 $('plan').onclick = async () => {
-  const t0 = performance.now();
-  $('plan').disabled = true;
-  try {
-    const parsed = records();
-    const entries = parsed.records[Number($('record').value) || 0] || [];
-    if (!entries.length) { status('入れる内容を貼り付けてください', 'res-ng'); return; }
+  statusId = 'status';
+  const parsed = records();
+  const entries = parsed.records[Number($('record').value) || 0] || [];
+  if (!entries.length) { status('入れる内容を貼り付けてください', 'res-ng'); return; }
+  await runPlan(entries, parsed.structured, $('plan'));
+};
 
+// 画面を読み取って、entries（[{key, value}]）をどの欄に入れるか決める
+async function runPlan(entries, structured, button) {
+  const t0 = performance.now();
+  button.disabled = true;
+  try {
     const tab = await activeTab();
     if (!/^https?:/.test(tab.url || '')) { status('このページでは使えません', 'res-ng'); return; }
 
@@ -132,7 +140,7 @@ $('plan').onclick = async () => {
 
     const mapKey = mapKeyOf(tab.url);
     const saved = (await chrome.storage.local.get(mapKey))[mapKey] || {};
-    scan = { tabId: tab.id, mapKey, fields, skipped, structured: parsed.structured };
+    scan = { tabId: tab.id, mapKey, fields, skipped, structured };
 
     status(`${fields.length}欄を割り当て中…`);
     const aiNow = await activeAI();
@@ -148,9 +156,9 @@ $('plan').onclick = async () => {
   } catch (e) {
     status(e.message, 'res-ng');
   } finally {
-    $('plan').disabled = false;
+    button.disabled = false;
   }
-};
+}
 
 let currentProvider = null;
 
@@ -300,14 +308,18 @@ async function openEditor(name) {
 }
 
 // --- タブ -------------------------------------------------------------------
+const TABS = ['personal', 'template', 'paste'];
 function showTab(name) {
+  const was = document.querySelector('.tab.active')?.dataset.tab;
   document.querySelectorAll('.tab').forEach((t) => t.classList.toggle('active', t.dataset.tab === name));
-  $('tab-personal').classList.toggle('hide', name !== 'personal');
-  $('tab-paste').classList.toggle('hide', name !== 'paste');
+  TABS.forEach((n) => $(`tab-${n}`).classList.toggle('hide', n !== name));
+  $('planPane').classList.toggle('hide', name === 'personal');
+  // 別のタブで作った割り当ては見せない
+  if (was && was !== name) $('planCard').classList.add('hide');
   chrome.storage.local.set({ lastTab: name });
 }
 document.querySelectorAll('.tab').forEach((t) => { t.onclick = () => showTab(t.dataset.tab); });
-chrome.storage.local.get('lastTab').then((s) => showTab(s.lastTab === 'paste' ? 'paste' : 'personal'));
+chrome.storage.local.get('lastTab').then((s) => showTab(TABS.includes(s.lastTab) ? s.lastTab : 'personal'));
 
 $('editProfile2').onclick = () => openEditor($('profileSel').value);
 $('editProfile').onclick = () => {
@@ -347,5 +359,120 @@ $('delProfile').onclick = async () => {
   refreshProfiles();
 };
 
+// --- 定型入力（ひな形） ------------------------------------------------------
+// templateSets: { セット名: ひな形ファイルの中身 }
+// tplState: { sel: "セット名|番号", values: { sel: { 欄: 値 } } }（前回の入力を残す）
+let sets = {};
+let tplState = { sel: '', values: {} };
+const selId = (setName, i) => `${setName}|${i}`;
+
+function currentTemplate() {
+  const i = tplState.sel.lastIndexOf('|');
+  return sets[tplState.sel.slice(0, i)]?.templates?.[Number(tplState.sel.slice(i + 1))] || null;
+}
+
+async function loadTemplates() {
+  const s = await chrome.storage.local.get(['templateSets', 'tplState']);
+  sets = s.templateSets || {};
+  tplState = { sel: '', values: {}, ...(s.tplState || {}) };
+  const opts = Object.entries(sets).flatMap(([name, set]) => set.templates.map((t, i) => ({ id: selId(name, i), set: name, name: t.name })));
+  if (!opts.some((o) => o.id === tplState.sel)) tplState.sel = opts[0]?.id || '';
+  $('tplEmpty').classList.toggle('hide', opts.length > 0);
+  $('tplCard').classList.toggle('hide', opts.length === 0);
+  const multi = Object.keys(sets).length > 1;
+  $('tplSel').innerHTML = opts.map((o) => `<option value="${esc(o.id)}" ${o.id === tplState.sel ? 'selected' : ''}>${esc(multi ? `${o.set} / ${o.name}` : o.name)}</option>`).join('');
+  $('setList').innerHTML = Object.entries(sets).map(([name, set]) => `
+    <div class="set-row"><span>${esc(name)} <small>${set.templates.length}件</small></span>
+      <button class="btn ghost sm danger" data-set="${esc(name)}">削除</button></div>`).join('');
+  document.querySelectorAll('#setList [data-set]').forEach((b) => {
+    b.onclick = async () => {
+      if (!confirm(`ひな形「${b.dataset.set}」を削除しますか？`)) return;
+      delete sets[b.dataset.set];
+      await chrome.storage.local.set({ templateSets: sets });
+      loadTemplates();
+    };
+  });
+  renderTemplate();
+}
+
+function tplValues() {
+  const v = {};
+  document.querySelectorAll('#tplFields [data-k]').forEach((i) => { v[i.dataset.k] = i.value; });
+  return v;
+}
+
+function renderTemplate() {
+  const t = currentTemplate();
+  if (!t) return;
+  const saved = tplState.values[tplState.sel] || {};
+  const TYPE = { date: 'date', time: 'time' };
+  $('tplFields').innerHTML = (t.fields || []).map((f) => {
+    const val = saved[f.key] ?? f.default ?? '';
+    const hint = f.hint ? `<span class="tpl-hint">${esc(f.hint)}</span>` : '';
+    const input = f.type === 'select'
+      ? `<div class="select"><select data-k="${esc(f.key)}"><option value="">（選ぶ）</option>${(f.options || []).map((o) => `<option ${o === val ? 'selected' : ''}>${esc(o)}</option>`).join('')}</select></div>`
+      : `<input type="${TYPE[f.type] || 'text'}" ${f.type === 'number' ? 'inputmode="numeric"' : ''} data-k="${esc(f.key)}" value="${esc(val)}" autocomplete="off">`;
+    return `<label class="field"><span class="lbl">${esc(f.label || f.key)}${f.fill === false ? '（計算用）' : ''}${hint}</span>${input}</label>`;
+  }).join('');
+  $('tplNotes').innerHTML = (t.notes || []).map((n) => `<li>${esc(n)}</li>`).join('');
+  document.querySelectorAll('#tplFields [data-k]').forEach((i) => { i.oninput = onTplInput; i.onchange = onTplInput; });
+  renderTplOut();
+}
+
+// 計算した値と、画面には入れない値（ファイル名など）を表示する
+function renderTplOut() {
+  const t = currentTemplate();
+  const { computed } = expand(t, tplValues());
+  const rows = computed.map((c) => ({ ...c, copy: (t.computed.find((x) => x.key === c.key) || {}).fill === false }));
+  $('tplOut').classList.toggle('hide', !rows.length);
+  $('tplOut').innerHTML = rows.map((r) => `<div class="row"><span class="k">${esc(r.key)}</span>
+    <span class="v ${/有$/.test(r.value) ? 'flag' : ''}">${r.value ? esc(r.value) : '—'}${r.copy && r.value ? ` <button class="copy" data-copy="${esc(r.value)}">コピー</button>` : ''}</span></div>`).join('');
+  document.querySelectorAll('#tplOut [data-copy]').forEach((b) => {
+    b.onclick = async () => { await navigator.clipboard.writeText(b.dataset.copy); b.textContent = 'コピー済み'; };
+  });
+}
+
+function onTplInput() {
+  tplState.values[tplState.sel] = tplValues();
+  chrome.storage.local.set({ tplState });
+  renderTplOut();
+}
+
+$('tplSel').onchange = () => {
+  tplState.sel = $('tplSel').value;
+  chrome.storage.local.set({ tplState });
+  $('planCard').classList.add('hide');
+  $('tplStatus').textContent = '';
+  renderTemplate();
+};
+
+$('tplPlan').onclick = async () => {
+  statusId = 'tplStatus';
+  const t = currentTemplate();
+  if (!t) return;
+  const { entries } = expand(t, tplValues());
+  await runPlan(entries, true, $('tplPlan'));
+};
+
+$('importSet').onclick = () => $('setFile').click();
+$('setFile').onchange = async () => {
+  const file = $('setFile').files[0];
+  $('setFile').value = '';
+  if (!file) return;
+  try {
+    const set = validateSet(await file.text());
+    sets[set.name] = set;
+    await chrome.storage.local.set({ templateSets: sets });
+    await loadTemplates();
+    $('settings').classList.add('hide');
+    showTab('template');
+    statusId = 'tplStatus';
+    status(`「${set.name}」を読み込みました（${set.templates.length}件）`, 'res-ok');
+  } catch (e) {
+    alert(`読み込めませんでした: ${e.message}`);
+  }
+};
+
 loadSettings().then(refreshRecordPicker);
 refreshProfiles();
+loadTemplates();

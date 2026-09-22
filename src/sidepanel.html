@@ -49,10 +49,20 @@
       <button class="btn" id="editProfile">個人情報を編集</button>
       <button class="btn ghost danger" id="forgetMap">この画面の記憶を消す</button>
     </div>
+    <div class="group sets">
+      <p class="group-title">定型入力のひな形</p>
+      <div id="setList"></div>
+      <div class="actions">
+        <button class="btn" id="importSet">ひな形ファイルを読み込む</button>
+        <input type="file" id="setFile" accept=".json,application/json" hidden>
+      </div>
+      <p class="note">ひな形（JSON）はこのPCのChromeの中だけに保存します。同じ名前のひな形は上書きします。書き方は README の「定型入力」を参照。</p>
+    </div>
   </section>
 
   <nav class="tabs" role="tablist">
     <button class="tab active" data-tab="personal" role="tab">個人情報</button>
+    <button class="tab" data-tab="template" role="tab">定型入力</button>
     <button class="tab" data-tab="paste" role="tab">貼り付けて入力</button>
   </nav>
 
@@ -108,7 +118,32 @@
       </button>
       <p class="status" id="status" role="status"></p>
     </section>
+  </main>
 
+  <!-- ===== 定型入力タブ ===== -->
+  <main id="tab-template" class="pane hide">
+    <section class="card" id="tplEmpty">
+      <p class="note flush">決まった値と、毎回変わる値だけを入れればよいフォームを「ひな形」にして使えます。
+        設定（歯車）の「ひな形ファイルを読み込む」から JSON を読み込んでください。</p>
+    </section>
+    <section class="card hide" id="tplCard">
+      <label class="field">
+        <span class="lbl">ひな形</span>
+        <div class="select"><select id="tplSel" aria-label="ひな形"></select></div>
+      </label>
+      <div id="tplFields"></div>
+      <div id="tplOut" class="tpl-out hide"></div>
+      <ul id="tplNotes" class="tpl-notes"></ul>
+      <button class="btn primary big" id="tplPlan">
+        <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6"/><path d="M20 20l-4.5-4.5"/></svg>
+        この画面に割り当て
+      </button>
+      <p class="status" id="tplStatus" role="status"></p>
+    </section>
+  </main>
+
+  <!-- 割り当て結果（貼り付け・定型入力で共用） -->
+  <main id="planPane" class="pane hide">
     <section class="card hide" id="planCard">
       <div class="card-head"><h2>割り当て</h2><span class="legend"><i class="c-saved"></i>記憶済み <i class="c-name"></i>名前一致 <i class="c-jev"></i>AI</span></div>
       <table class="plan">

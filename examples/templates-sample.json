@@ -1,0 +1,43 @@
+{
+  "name": "サンプル: 経費精算",
+  "about": "定型入力のひな形の例。欄の名前や値は、お使いの経費精算システムの画面に合わせて書き換えてください。",
+  "templates": [
+    {
+      "name": "新幹線・特急",
+      "fixed": {
+        "経費タイプ": "国内交通費（新幹線・特急）",
+        "通貨": "日本円",
+        "領収書区分": "電子領収書"
+      },
+      "fields": [
+        { "key": "取引日", "type": "date" },
+        { "key": "出発地", "type": "text", "hint": "例）東京" },
+        { "key": "到着地", "type": "text", "hint": "例）新大阪" },
+        { "key": "金額", "type": "number" },
+        { "key": "用務先", "type": "text" }
+      ],
+      "computed": [
+        { "key": "領収書のファイル名", "op": "format", "template": "領収書_{出発地}→{到着地}.pdf", "fill": false }
+      ],
+      "notes": ["領収書PDFのアップロードはご自身で"]
+    },
+    {
+      "name": "出張手当（日帰り）",
+      "fixed": { "経費タイプ": "出張手当", "宿泊数": "0" },
+      "fields": [
+        { "key": "出発日", "type": "date" },
+        { "key": "帰着日", "type": "date", "defaultFrom": "出発日", "hint": "空欄なら出発日と同じ" },
+        { "key": "列車の出発時刻", "type": "time", "fill": false },
+        { "key": "列車の到着時刻", "type": "time", "fill": false }
+      ],
+      "computed": [
+        { "key": "出発時刻", "op": "addMinutes", "from": "列車の出発時刻", "subtract": [30] },
+        { "key": "早出", "op": "compareTime", "from": "出発時刻", "lte": "08:00", "then": "有", "else": "無" },
+        { "key": "帰着時刻", "op": "addMinutes", "from": "列車の到着時刻", "add": [30] },
+        { "key": "遅着", "op": "compareTime", "from": "帰着時刻", "gte": "18:00", "then": "有", "else": "無" },
+        { "key": "日数", "op": "days", "start": "出発日", "end": "帰着日", "fill": false },
+        { "key": "手当額の目安（円）", "op": "multiply", "from": "日数", "by": 1000, "fill": false }
+      ]
+    }
+  ]
+}
