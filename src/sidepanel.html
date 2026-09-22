@@ -29,13 +29,13 @@
     <label class="switch">
       <input type="checkbox" id="useJev">
       <span class="track"><span class="thumb"></span></span>
-      <span>Jevを使う<small>オフにすると保存済みの対応と名前一致だけで入力（外部通信なし）</small></span>
+      <span>Jevを使う<small>オフにすると、記憶した入力先と名前一致だけで入力（外部通信なし）</small></span>
     </label>
     <p class="note">Jevに送るのは「貼り付けた内容」と「欄の名前・選択肢」だけ。画面に入っている値や、登録した個人情報の値は送りません。</p>
     <div class="actions">
       <button class="btn primary" id="saveSettings">保存</button>
       <button class="btn" id="editProfile">個人情報を編集</button>
-      <button class="btn ghost danger" id="forgetMap">この画面の学習を消す</button>
+      <button class="btn ghost danger" id="forgetMap">この画面の記憶を消す</button>
     </div>
   </section>
 
@@ -98,7 +98,7 @@
     </section>
 
     <section class="card hide" id="planCard">
-      <div class="card-head"><h2>割り当て</h2><span class="legend"><i class="c-saved"></i>保存済み <i class="c-name"></i>名前一致 <i class="c-jev"></i>Jev</span></div>
+      <div class="card-head"><h2>割り当て</h2><span class="legend"><i class="c-saved"></i>記憶済み <i class="c-name"></i>名前一致 <i class="c-jev"></i>Jev</span></div>
       <table class="plan">
         <thead><tr><th></th><th>欄</th><th>入れる値</th><th>根拠</th></tr></thead>
         <tbody id="planBody"></tbody>
@@ -106,7 +106,7 @@
       <p class="note" id="skipped"></p>
       <div class="actions">
         <button class="btn primary" id="fill">入力する</button>
-        <button class="btn" id="remember">この対応を保存</button>
+        <button class="btn" id="remember">この画面の入力先を記憶</button>
         <button class="btn ghost" id="clear">枠を消す</button>
       </div>
       <p class="hint">保存・提出ボタンは押しません。確認してからご自身で。</p>

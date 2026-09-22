@@ -28,7 +28,7 @@ $('forgetMap').onclick = async () => {
   const tab = await activeTab();
   const key = mapKeyOf(tab.url);
   await chrome.storage.local.remove(key);
-  status('この画面の対応表を消しました');
+  status('この画面の記憶を消しました');
 };
 
 // 同じ画面なら URL 中の番号（伝票IDなど）が違っても同じ対応表を使う
@@ -117,7 +117,7 @@ $('plan').onclick = async () => {
 };
 
 function render() {
-  const srcLabel = { saved: '保存済み', name: '名前一致', jev: 'Jev' };
+  const srcLabel = { saved: '記憶済み', name: '名前一致', jev: 'Jev' };
   $('planCard').classList.remove('hide');
   $('planBody').innerHTML = current.map((p, i) => {
     const low = p.source === 'jev' && p.confidence < MIN_CONFIDENCE;
@@ -136,7 +136,7 @@ function render() {
   if (scan.skipped.length) parts.push(`安全のため除外: ${scan.skipped.map((s) => `${s.label}（${s.reason}）`).join('、')}`);
   $('skipped').textContent = parts.join(' ／ ');
   $('remember').disabled = !scan.structured;
-  $('remember').title = scan.structured ? '' : '「項目: 値」形式かJSONのときだけ保存できます';
+  $('remember').title = scan.structured ? '' : '「項目: 値」形式かJSONのときだけ記憶できます';
 }
 
 function selected() {
@@ -191,7 +191,7 @@ $('remember').onclick = async () => {
   const prev = (await chrome.storage.local.get(scan.mapKey))[scan.mapKey] || {};
   const next = toSaved(scan.fields, selected(), prev);
   await chrome.storage.local.set({ [scan.mapKey]: next });
-  status(`対応表を保存しました（${Object.keys(next).length}欄）。次回からこの画面はJevなしで入ります`, 'res-ok');
+  status(`この画面の入力先を記憶しました（${Object.keys(next).length}欄）。次回はJevに問い合わせずに入力します。記憶はこのPCの中だけです`, 'res-ok');
 };
 
 $('clear').onclick = async () => {

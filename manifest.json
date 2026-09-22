@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "BlinkFill - フォーム自動入力ツール",
-  "version": "0.3.1",
-  "description": "個人情報のワンクリック入力、貼り付けた内容の一括入力、画面ごとの学習で、フォーム入力を一瞬で完了",
+  "version": "0.3.2",
+  "description": "個人情報のワンクリック入力、貼り付けた内容の一括入力、よく使う画面の入力先を記憶して、フォーム入力を一瞬で完了",
   "permissions": [
     "storage",
     "scripting",

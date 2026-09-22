@@ -64,7 +64,7 @@ function flatten(obj, prefix = '') {
 }
 
 // ---------------------------------------------------------------------------
-// 対応表（学習結果）: 欄の signature → 入力のキー
+// 対応表（記憶した入力先）: 欄の signature → 入力のキー
 // ---------------------------------------------------------------------------
 export function applySaved(fields, entries, saved = {}) {
   const byKey = new Map(entries.map((e) => [e.key, e]));
