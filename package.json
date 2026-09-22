@@ -1,0 +1,13 @@
+{
+  "name": "blinkfill",
+  "private": true,
+  "type": "module",
+  "description": "BlinkFill の開発用。拡張機能そのものはビルド不要（vendor/ に同梱済みのSDKを使う）",
+  "scripts": {
+    "vendor": "esbuild vendor-src/anthropic.mjs --bundle --format=esm --platform=browser --minify --outfile=vendor/anthropic.js"
+  },
+  "devDependencies": {
+    "@anthropic-ai/sdk": "^0.70.0",
+    "esbuild": "^0.25.0"
+  }
+}

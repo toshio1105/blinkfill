@@ -1,8 +1,8 @@
 // 貼り付けた内容の解釈と、入力計画（どの欄に何を入れるか）の組み立て。
 // サイドパネルと Node のテストの両方から使う（chrome.* に依存しない）。
 
-const JEV_URL = 'https://api.typesafe.ai/v1/systemone';
-const BATCH = 12;          // 1リクエストあたりの質問数
+import { askChoices } from './ai.js';
+
 const MAX_OPTIONS = 40;    // これより選択肢が多い select は Jev に聞かず文字列一致で選ぶ
 export const MIN_CONFIDENCE = 0.5;
 
@@ -140,63 +140,39 @@ export function buildQuestions(fields, entries) {
   return { questions, decode };
 }
 
-export async function askJev({ apiKey, fields, entries, fetchImpl = fetch }) {
+// provider: { provider: 'jev'|'openai'|'anthropic'|'gemini', apiKey, model }
+export async function askAI({ ai, fields, entries, fetchImpl }) {
   const { questions, decode } = buildQuestions(fields, entries);
   const state = '入力内容:\n' + entries.map((e) => `- ${e.key}: ${e.value}`).join('\n');
-  const ids = Object.keys(questions);
-  const chunks = [];
-  let cur = [];
-  for (const id of ids) {
-    cur.push(id);
-    if (cur.length >= BATCH && !questions[`${id}__src`]) { chunks.push(cur); cur = []; }
-  }
-  if (cur.length) chunks.push(cur);
+  const { answers, ms, requests } = await askChoices({ ...ai, state, questions, fetchImpl });
 
-  const t0 = performance.now();
-  const responses = await Promise.all(chunks.map(async (chunk) => {
-    const res = await fetchImpl(JEV_URL, {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: 'jev-latest',
-        state,
-        questions: Object.fromEntries(chunk.map((id) => [id, questions[id]])),
-      }),
-    });
-    if (res.status === 401) throw new Error('JevのAPIキーが無効です');
-    if (res.status === 429 || res.status === 529) throw new Error('Jevが混雑しています。少し待って再実行してください');
-    if (!res.ok) throw new Error(`Jev ${res.status}: ${(await res.text()).slice(0, 200)}`);
-    return res.json();
-  }));
-  const ms = Math.round(performance.now() - t0);
-
-  const answers = Object.assign({}, ...responses.map((r) => r.answers ?? {}));
   const plan = [];
-  for (const r of [{ answers }]) {
-    for (const [id, a] of Object.entries(r.answers ?? {})) {
-      if (id.endsWith('__src')) continue;
-      if (!a || a.choice === 'none' || a.choice == null) continue;
-      const d = decode[`${id}:${a.choice}`];
-      if (!d) continue;
-      const f = fields.find((x) => x.id === id);
-      // 選択欄は選んだ項目名しか返らないので、元になった入力キーを文字列の近さで探す（対応表の保存用）
-      const srcA = answers[`${id}__src`];
-      const srcE = srcA && srcA.choice !== 'none' ? decode[`${id}__src:${srcA.choice}`] : null;
-      const key = d.key ?? srcE?.key ?? entries.find((e) => {
-        const a2 = norm(e.value), b2 = norm(d.value);
-        return a2 && b2 && (a2 === b2 || a2.includes(b2) || b2.includes(a2));
-      })?.key;
-      const entryValue = key ? entries.find((e) => e.key === key)?.value : undefined;
-      plan.push({ id, label: f?.label, key, value: d.value, entryValue, confidence: a.confidence ?? 0, source: 'jev' });
-    }
+  for (const [id, a] of Object.entries(answers)) {
+    if (id.endsWith('__src')) continue;
+    if (!a || a.choice === 'none' || a.choice == null) continue;
+    const d = decode[`${id}:${a.choice}`];
+    if (!d) continue;
+    const f = fields.find((x) => x.id === id);
+    // 選択欄は選んだ項目名しか返らないので、元になった入力キーを探す（入力先の記憶用）
+    const srcA = answers[`${id}__src`];
+    const srcE = srcA && srcA.choice !== 'none' ? decode[`${id}__src:${srcA.choice}`] : null;
+    const key = d.key ?? srcE?.key ?? entries.find((e) => {
+      const a2 = norm(e.value), b2 = norm(d.value);
+      return a2 && b2 && (a2 === b2 || a2.includes(b2) || b2.includes(a2));
+    })?.key;
+    const entryValue = key ? entries.find((e) => e.key === key)?.value : undefined;
+    plan.push({ id, label: f?.label, key, value: d.value, entryValue, confidence: a.confidence ?? 0, source: 'ai' });
   }
-  return { plan, ms, requests: chunks.length };
+  return { plan, ms, requests };
 }
 
 // ---------------------------------------------------------------------------
-// まとめ: 保存済み → 名前一致 → Jev の順で埋める
+// まとめ: 記憶済み → 名前一致 → AI の順で埋める
+// ai を渡さない（または apiKey が空）なら AI は使わない。
+// 旧形式の { useJev, apiKey } も受け付ける（Jev として扱う）
 // ---------------------------------------------------------------------------
-export async function makePlan({ fields, entries, saved, useJev, apiKey, fetchImpl }) {
+export async function makePlan({ fields, entries, saved, ai, useJev, apiKey, fetchImpl }) {
+  if (!ai && useJev && apiKey) ai = { provider: 'jev', apiKey };
   const plan = applySaved(fields, entries, saved);
   const done = new Set(plan.map((p) => p.id));
 
@@ -204,15 +180,15 @@ export async function makePlan({ fields, entries, saved, useJev, apiKey, fetchIm
   byName.forEach((p) => done.add(p.id));
   plan.push(...byName);
 
-  let jev = { ms: 0, requests: 0 };
+  let stats = { ms: 0, requests: 0 };
   const rest = fields.filter((f) => !done.has(f.id));
-  if (useJev && apiKey && rest.length && entries.length) {
-    const r = await askJev({ apiKey, fields: rest, entries, fetchImpl });
+  if (ai?.apiKey && rest.length && entries.length) {
+    const r = await askAI({ ai, fields: rest, entries, fetchImpl });
     plan.push(...r.plan);
-    jev = { ms: r.ms, requests: r.requests };
+    stats = { ms: r.ms, requests: r.requests };
   }
   const out = plan.filter((p) => !p.skip).map((p) => ({ ...p, value: normalizeValue(fields.find((f) => f.id === p.id), p.value) }));
-  return { plan: out, jev };
+  return { plan: out, ai: stats, jev: stats };
 }
 
 // 入力した結果を対応表として保存する形に変換

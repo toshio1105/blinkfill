@@ -22,16 +22,28 @@
   <!-- 設定（歯車で開閉） -->
   <section id="settings" class="sheet hide">
     <h2>設定</h2>
-    <label class="field">
-      <span class="lbl">Jev APIキー</span>
-      <input type="password" id="apiKey" placeholder="apikey_..." autocomplete="off">
-    </label>
     <label class="switch">
-      <input type="checkbox" id="useJev">
+      <input type="checkbox" id="useAI">
       <span class="track"><span class="thumb"></span></span>
-      <span>Jevを使う<small>オフにすると、記憶した入力先と名前一致だけで入力（外部通信なし）</small></span>
+      <span>AIで欄を判定する<small>オフにすると、記憶した入力先と欄の名前だけで入力（外部通信なし・キー不要）</small></span>
     </label>
-    <p class="note">Jevに送るのは「貼り付けた内容」と「欄の名前・選択肢」だけ。画面に入っている値や、登録した個人情報の値は送りません。</p>
+
+    <div id="aiBox">
+      <span class="lbl">使うAI</span>
+      <div class="providers" id="providerList" role="radiogroup"></div>
+      <p class="tip hide" id="jevTip">💡 <b>Jev</b>は「選ぶ」ことに特化したAIで、他のAIより3〜7倍速く、費用は1/14〜1/29です（自社計測）。</p>
+
+      <label class="field">
+        <span class="lbl"><span id="keyLabel">APIキー</span> <a id="keyLink" target="_blank" rel="noopener">キーを取得 ↗</a></span>
+        <input type="password" id="apiKey" autocomplete="off">
+      </label>
+      <label class="field">
+        <span class="lbl">モデル</span>
+        <div class="select"><select id="model"></select></div>
+      </label>
+    </div>
+    <p class="note">APIキーはあなたのChromeの中だけに保存され、選んだAIへの問い合わせにだけ使います。
+      AIに送るのは「貼り付けた内容」と「欄の名前・選択肢」だけ。画面に入っている値や、登録した個人情報の値は送りません。</p>
     <div class="actions">
       <button class="btn primary" id="saveSettings">保存</button>
       <button class="btn" id="editProfile">個人情報を編集</button>
@@ -98,7 +110,7 @@
     </section>
 
     <section class="card hide" id="planCard">
-      <div class="card-head"><h2>割り当て</h2><span class="legend"><i class="c-saved"></i>記憶済み <i class="c-name"></i>名前一致 <i class="c-jev"></i>Jev</span></div>
+      <div class="card-head"><h2>割り当て</h2><span class="legend"><i class="c-saved"></i>記憶済み <i class="c-name"></i>名前一致 <i class="c-jev"></i>AI</span></div>
       <table class="plan">
         <thead><tr><th></th><th>欄</th><th>入れる値</th><th>根拠</th></tr></thead>
         <tbody id="planBody"></tbody>

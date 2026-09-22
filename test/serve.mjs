@@ -30,9 +30,10 @@ http.createServer((req, res) => {
     res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
     return res.end(fs.readFileSync(path.join(dir, '../src/sidepanel.html'), 'utf8').replace('<head>', '<head>' + CHROME_STUB));
   }
-  if (pathname.startsWith('/src/')) {
+  if (pathname.startsWith('/src/') || pathname.startsWith('/vendor/')) {
     const f = path.join(dir, '..', pathname);
-    if (!f.startsWith(path.join(dir, '..', 'src')) || !fs.existsSync(f)) { res.writeHead(404); return res.end(); }
+    const root = path.join(dir, '..', pathname.split('/')[1]);
+    if (!f.startsWith(root) || !fs.existsSync(f)) { res.writeHead(404); return res.end(); }
     const t = { '.js': 'text/javascript', '.css': 'text/css', '.html': 'text/html' }[path.extname(f)] || 'text/plain';
     res.writeHead(200, { 'Content-Type': t + '; charset=utf-8' });
     return fs.createReadStream(f).pipe(res);

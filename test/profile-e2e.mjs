@@ -1,10 +1,12 @@
 // 個人情報のワンクリック入力: 割り当てのテスト（架空のプロフィールを使う）
 import fs from 'node:fs';
+import { testKey } from './env.mjs';
 import { planProfile, derive } from '../src/profile.js';
 
 let raw = JSON.parse(fs.readFileSync(new URL('./profile-fields.sample.json', import.meta.url), 'utf8'));
 const { fields, skipped } = typeof raw === 'string' ? JSON.parse(raw) : raw;
-const apiKey = (fs.readFileSync('C:/Users/toshi/Projects/jev-benchmark/.env', 'utf8').match(/^TYPESAFE_API_KEY=(.*)$/m) || [])[1]?.trim();
+const apiKey = testKey('TYPESAFE_API_KEY');
+if (!apiKey) throw new Error('TYPESAFE_API_KEY を環境変数か ENV_FILE で指定してください');
 
 export const PROFILE = {
   lastName: '山田', firstName: '太郎', lastNameKana: 'やまだ', firstNameKana: 'タロウ',

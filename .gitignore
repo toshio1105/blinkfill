@@ -1,4 +1,5 @@
 node_modules/
-test/fields.sample.json
-test/profile-fields.sample.json
-test/profile-plan.tmp.json
+test/*.sample.json
+test/*.tmp.json
+.env
+*.env

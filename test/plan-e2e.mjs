@@ -1,11 +1,13 @@
 // 割り当てロジックの実地テスト。模擬画面から読み取った欄（fields.sample.json）に対して、
 // 3種類の入力で「保存済み → 名前一致 → Jev」の割り当てがどうなるかを確認する。
 import fs from 'node:fs';
+import { testKey } from './env.mjs';
 import { parseInput, makePlan, toSaved } from '../src/plan.js';
 
 let raw = JSON.parse(fs.readFileSync(new URL('./fields.sample.json', import.meta.url), 'utf8'));
 const fields = typeof raw === 'string' ? JSON.parse(raw) : raw;
-const apiKey = (fs.readFileSync('C:/Users/toshi/Projects/jev-benchmark/.env', 'utf8').match(/^TYPESAFE_API_KEY=(.*)$/m) || [])[1]?.trim();
+const apiKey = testKey('TYPESAFE_API_KEY');
+if (!apiKey) throw new Error('TYPESAFE_API_KEY を環境変数か ENV_FILE で指定してください');
 if (!apiKey) throw new Error('TYPESAFE_API_KEY が見つかりません');
 
 const EXPECT = {

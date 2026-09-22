@@ -1,28 +1,64 @@
 import { parseInput, makePlan, toSaved, MIN_CONFIDENCE } from './plan.js';
 import { PROFILE_SCHEMA } from './profile.js';
 import { loadProfiles, fillProfile } from './oneclick.js';
+import { PROVIDERS } from './ai.js';
+import { getAIConfig, saveAIConfig, activeAI } from './config.js';
 
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
 
-let settings = { apiKey: '', useJev: true };
+let ai = null;          // 設定画面で編集中の AI 設定（getAIConfig の戻り値）
 let scan = null;       // { tabId, mapKey, fields: [{...field, id: "frameId|fN", frameId, localId}], skipped }
 let current = [];      // 表示中の計画
 
 // --- 設定 -----------------------------------------------------------------
+function renderAI() {
+  $('providerList').innerHTML = Object.entries(PROVIDERS).map(([id, p]) => `
+    <label class="prov ${ai.provider === id ? 'on' : ''}">
+      <input type="radio" name="provider" value="${id}" ${ai.provider === id ? 'checked' : ''}>
+      <span><span class="name">${esc(p.label)}</span><span class="desc">${esc(p.note)}</span></span>
+      ${p.badge ? `<span class="rec">${esc(p.badge)}</span>` : ''}
+    </label>`).join('');
+  const p = PROVIDERS[ai.provider];
+  $('keyLabel').textContent = `${p.label.replace(/（.*）/, '')} のAPIキー`;
+  $('keyLink').href = p.keyUrl;
+  $('apiKey').placeholder = p.keyHint;
+  $('apiKey').value = ai.keys[ai.provider] || '';
+  $('model').innerHTML = p.models.map((m) => `<option ${m === (ai.models[ai.provider] || p.models[0]) ? 'selected' : ''}>${m}</option>`).join('');
+  $('jevTip').classList.toggle('hide', ai.provider === 'jev');
+  $('aiBox').classList.toggle('dim', !ai.enabled);
+  document.querySelectorAll('#providerList input').forEach((r) => {
+    r.onchange = () => { keepEdits(); ai.provider = r.value; renderAI(); };
+  });
+}
+
+// 画面上の入力（キー・モデル）を、編集中の設定に取り込む
+function keepEdits() {
+  ai.keys[ai.provider] = $('apiKey').value.trim();
+  ai.models[ai.provider] = $('model').value;
+  ai.enabled = $('useAI').checked;
+}
+
 async function loadSettings() {
-  const s = await chrome.storage.local.get(['apiKey', 'useJev', 'lastInput']);
-  settings = { apiKey: s.apiKey || '', useJev: s.useJev !== false };
-  $('apiKey').value = settings.apiKey;
-  $('useJev').checked = settings.useJev;
+  ai = await getAIConfig();
+  $('useAI').checked = ai.enabled;
+  renderAI();
+  const s = await chrome.storage.local.get('lastInput');
   if (s.lastInput) $('input').value = s.lastInput;
-  if (!settings.apiKey) $('settings').classList.remove('hide');
+  if (ai.enabled && !ai.apiKey) $('settings').classList.remove('hide');
 }
 $('toggleSettings').onclick = () => $('settings').classList.toggle('hide');
+$('useAI').onchange = () => { keepEdits(); renderAI(); };
 $('saveSettings').onclick = async () => {
-  settings = { apiKey: $('apiKey').value.trim(), useJev: $('useJev').checked };
-  await chrome.storage.local.set(settings);
-  status('設定を保存しました');
+  keepEdits();
+  await saveAIConfig(ai);
+  ai = await getAIConfig();
+  const msg = !ai.enabled ? 'AIを使わない設定で保存しました'
+    : ai.apiKey ? `設定を保存しました（${PROVIDERS[ai.provider].label}）`
+    : `保存しました。${PROVIDERS[ai.provider].label} のAPIキーを入れてください`;
+  $('profileStatus').className = 'status ' + (ai.enabled && !ai.apiKey ? 'res-ng' : 'res-ok');
+  $('profileStatus').textContent = msg;
+  status(msg, ai.enabled && !ai.apiKey ? 'res-ng' : 'res-ok');
 };
 $('forgetMap').onclick = async () => {
   const tab = await activeTab();
@@ -99,16 +135,16 @@ $('plan').onclick = async () => {
     scan = { tabId: tab.id, mapKey, fields, skipped, structured: parsed.structured };
 
     status(`${fields.length}欄を割り当て中…`);
-    const { plan, jev } = await makePlan({
-      fields, entries, saved, useJev: settings.useJev, apiKey: settings.apiKey,
-    });
+    const aiNow = await activeAI();
+    const { plan, ai: stats } = await makePlan({ fields, entries, saved, ai: aiNow });
     current = plan;
+    currentProvider = aiNow?.provider;
     render();
     await markPreview();
 
     const total = Math.round(performance.now() - t0);
-    const jevNote = jev.requests ? `（うちJev ${jev.ms}ms・${jev.requests}回）` : '';
-    status(`${plan.length}/${fields.length}欄を割り当て ${total}ms${jevNote}`, 'res-ok');
+    const aiNote = stats.requests ? `（うち${PROVIDERS[aiNow.provider].label.replace(/（.*）/, '')} ${stats.ms}ms・${stats.requests}回）` : '';
+    status(`${plan.length}/${fields.length}欄を割り当て ${total}ms${aiNote}`, 'res-ok');
   } catch (e) {
     status(e.message, 'res-ng');
   } finally {
@@ -116,12 +152,16 @@ $('plan').onclick = async () => {
   }
 };
 
+let currentProvider = null;
+
 function render() {
-  const srcLabel = { saved: '記憶済み', name: '名前一致', jev: 'Jev' };
+  const aiName = currentProvider ? PROVIDERS[currentProvider].label.replace(/（.*）/, '') : 'AI';
+  const srcLabel = { saved: '記憶済み', name: '名前一致', ai: aiName };
   $('planCard').classList.remove('hide');
   $('planBody').innerHTML = current.map((p, i) => {
-    const low = p.source === 'jev' && p.confidence < MIN_CONFIDENCE;
-    const conf = p.source === 'jev' ? ` ${Math.round(p.confidence * 100)}%` : '';
+    const low = p.source === 'ai' && p.confidence < MIN_CONFIDENCE;
+    // 確信度を返すのは Jev だけ。LLM の答えは一律の値なので % は出さない
+    const conf = p.source === 'ai' && currentProvider === 'jev' ? ` ${Math.round(p.confidence * 100)}%` : '';
     return `<tr>
       <td><input type="checkbox" data-i="${i}" ${low ? '' : 'checked'}></td>
       <td>${esc(p.label)}</td>

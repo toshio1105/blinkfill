@@ -2,6 +2,7 @@
 // 方針: 値（氏名・住所・電話など）は外に出さない。Jev に送るのは「欄の名前」と「項目名」だけ。
 // 判定の順番: autocomplete 属性 → 欄の名前のパターン → 分割欄（郵便番号・電話・生年月日）→ Jev
 // サイドパネル・バックグラウンド・Node のテストで共用（chrome.* に依存しない）。
+import { askChoices } from './ai.js';
 
 // 設定画面に出す項目（ユーザーが入力するもの）
 export const PROFILE_SCHEMA = [
@@ -196,7 +197,9 @@ export function buildProfileQuestions(fields) {
   return questions;
 }
 
-export async function planProfile({ fields, profile, useJev, apiKey, fetchImpl = fetch, minConfidence = 0.6 }) {
+// ai: { provider, apiKey, model }（旧形式の { useJev, apiKey } も受け付ける）
+export async function planProfile({ fields, profile, ai, useJev, apiKey, fetchImpl = fetch, minConfidence = 0.6 }) {
+  if (!ai && useJev && apiKey) ai = { provider: 'jev', apiKey };
   const values = derive(profile);
   const byRuleMap = ruleMatch(fields, values);
   const plan = [];
@@ -207,41 +210,28 @@ export async function planProfile({ fields, profile, useJev, apiKey, fetchImpl =
     else if (!key) rest.push(f);
   }
 
-  let jev = { ms: 0, requests: 0 };
-  if (useJev && apiKey && rest.length) {
-    const t0 = performance.now();
-    const questions = buildProfileQuestions(rest);
-    const ids = Object.keys(questions);
-    const chunks = [];
-    for (let i = 0; i < ids.length; i += 12) chunks.push(ids.slice(i, i + 12));
-    const answers = Object.assign({}, ...(await Promise.all(chunks.map(async (chunk) => {
-      const res = await fetchImpl('https://api.typesafe.ai/v1/systemone', {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
-        // state には値を入れない。「どんな項目があるか」だけを渡す
-        body: JSON.stringify({
-          model: 'jev-latest',
-          state: '日本語のWebフォーム。入力者の個人情報（氏名・連絡先・住所・勤務先・生年月日）を入れる。',
-          questions: Object.fromEntries(chunk.map((id) => [id, questions[id]])),
-        }),
-      });
-      if (!res.ok) throw new Error(`Jev ${res.status}`);
-      return (await res.json()).answers ?? {};
-    }))));
-    jev = { ms: Math.round(performance.now() - t0), requests: chunks.length };
-    const jevMap = new Map();
+  let stats = { ms: 0, requests: 0 };
+  if (ai?.apiKey && rest.length) {
+    // state には値を入れない。「どんな項目があるか」だけを渡す（どのAIでも同じ）
+    const { answers, ms, requests } = await askChoices({
+      ...ai, fetchImpl,
+      state: '日本語のWebフォーム。入力者の個人情報（氏名・連絡先・住所・勤務先・生年月日）を入れる。',
+      questions: buildProfileQuestions(rest),
+    });
+    stats = { ms, requests };
+    const aiMap = new Map();
     for (const f of rest) {
       const a = answers[f.id];
-      if (a && a.choice && a.choice !== 'none' && (a.confidence ?? 0) >= minConfidence) jevMap.set(f.id, { key: a.choice, conf: a.confidence });
+      if (a && a.choice && a.choice !== 'none' && a.choice in TARGETS && (a.confidence ?? 0) >= minConfidence) aiMap.set(f.id, { key: a.choice, conf: a.confidence });
     }
-    // Jev の結果も分割欄の処理にかける
-    const merged = splitGroups(fields, new Map([...byRuleMap, ...[...jevMap].map(([id, x]) => [id, x.key])]));
+    // AI の結果も分割欄の処理にかける
+    const merged = splitGroups(fields, new Map([...byRuleMap, ...[...aiMap].map(([id, x]) => [id, x.key])]));
     for (const f of rest) {
       const key = merged.get(f.id);
-      if (key && values[key] != null && jevMap.has(f.id)) {
-        plan.push({ id: f.id, label: f.label, key, value: fitValue(f, key, values[key]), confidence: jevMap.get(f.id).conf, source: 'jev' });
+      if (key && values[key] != null && aiMap.has(f.id)) {
+        plan.push({ id: f.id, label: f.label, key, value: fitValue(f, key, values[key]), confidence: aiMap.get(f.id).conf, source: 'ai' });
       }
     }
   }
-  return { plan, jev };
+  return { plan, ai: stats, jev: stats };
 }

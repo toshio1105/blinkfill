@@ -127,4 +127,19 @@ table.plan{width:100%;border-collapse:collapse;font-size:12px}
 .chip.saved::before{background:var(--c-saved)} .chip.name::before{background:var(--c-name)}
 .chip.low{color:var(--warn)}
 
+/* AI の選択 */
+.providers{display:grid;gap:6px;margin-bottom:10px}
+.prov{display:flex;align-items:center;gap:10px;padding:9px 11px;border:1px solid var(--line);border-radius:9px;
+  background:var(--field);cursor:pointer;transition:border-color .15s,background .15s}
+.prov:hover{border-color:color-mix(in srgb,var(--line) 40%,var(--muted))}
+.prov input{accent-color:var(--accent);margin:0}
+.prov .name{font-weight:600}
+.prov .desc{display:block;font-size:11px;color:var(--muted);line-height:1.4;margin-top:1px}
+.prov.on{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 7%,var(--panel))}
+.rec{margin-left:auto;flex:none;font-size:10.5px;font-weight:700;color:#fff;background:var(--accent);padding:2px 8px;border-radius:99px}
+.tip{font-size:12px;line-height:1.55;margin:0 0 12px;padding:8px 10px;border-radius:8px;
+  background:var(--accent-soft);color:var(--ink)}
+.lbl a{font-weight:600;color:var(--accent);text-decoration:none;margin-left:6px}
+.lbl a:hover{text-decoration:underline}
+#aiBox.dim{opacity:.45;pointer-events:none}
 .hide{display:none!important}
