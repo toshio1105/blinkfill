@@ -83,3 +83,7 @@ src/config.js      AI の設定の保存
 src/sidepanel.*    サイドパネルの画面
 src/background.js  ショートカット（Alt+Shift+P）
 ```
+
+## ライセンス
+
+MIT License（[LICENSE](LICENSE)）。無保証です。入力内容は送信前に必ずご自身で確認してください。
