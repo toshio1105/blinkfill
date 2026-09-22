@@ -2,11 +2,12 @@
 // chrome.* には依存しない（テストでは素のページに読み込んで同じコードを検証する）。
 //
 // 守ること:
-// - 送信・保存ボタンは絶対に押さない（click は一切呼ばない）
+// - 送信・保存ボタンは絶対に押さない（click はチェックボックスの切り替えにだけ使う）
 // - パスワード欄とカード欄には触らない
 // - 画面に入っている既存の値は外に出さない（scan の戻り値に含めない）
 (() => {
-  if (window.__jevAF) return;
+  // 古い版が注入済みのタブでも、新しい版で置き換える
+  if (window.__jevAF?.version >= 2) return;
 
   const SKIP_TYPES = new Set([
     'hidden', 'password', 'file', 'submit', 'button', 'reset', 'image',
@@ -87,7 +88,8 @@
     return clean(el.name || el.id || '');
   }
 
-  function scan() {
+  // checkboxes: true のときだけチェックボックスも読む（定型入力・貼り付け用。個人情報の入力では読まない）
+  function scan({ checkboxes = false } = {}) {
     document.querySelectorAll(`[${ATTR}]`).forEach((e) => e.removeAttribute(ATTR));
     registry = [];
     const out = [];
@@ -101,7 +103,7 @@
           : el.isContentEditable && el.tagName !== 'INPUT' ? 'contenteditable'
           : (el.getAttribute('type') || 'text').toLowerCase();
 
-        if (SKIP_TYPES.has(type)) {
+        if (SKIP_TYPES.has(type) && !(checkboxes && type === 'checkbox')) {
           if (type === 'password') skipped.push({ label: labelOf(el), reason: 'パスワード欄' });
           continue;
         }
@@ -183,6 +185,15 @@
     return el.value === hit.value ? 'ok' : 'rejected';
   }
 
+  // 「✓」「はい」「on」などでチェック、「無」「いいえ」「off」などで外す。状態が変わるときだけ click する
+  const OFF = /^(|0|false|off|no|いいえ|無|なし|☐|□|×|✗)$/i;
+  function fillCheckbox(el, value) {
+    const want = !OFF.test(clean(value));
+    if (el.checked !== want) el.click();
+    if (el.checked !== want) { el.checked = want; fire(el, 'input'); fire(el, 'change'); }
+    return el.checked === want ? 'ok' : 'rejected';
+  }
+
   function fillEditable(el, value) {
     el.focus();
     el.ownerDocument.execCommand('selectAll', false);
@@ -202,7 +213,8 @@
       if (el.type === 'number') v = v.replace(/[,，円¥￥\s]/g, '');
       let status;
       try {
-        status = el.tagName === 'SELECT' ? fillSelect(el, v)
+        status = el.type === 'checkbox' ? fillCheckbox(el, v)
+          : el.tagName === 'SELECT' ? fillSelect(el, v)
           : el.isContentEditable && el.tagName !== 'INPUT' ? fillEditable(el, v)
           : fillText(el, v);
       } catch (e) {
@@ -238,5 +250,5 @@
     }
   }
 
-  window.__jevAF = { scan, fill, preview, clearMarks, version: 1 };
+  window.__jevAF = { scan, fill, preview, clearMarks, version: 2 };
 })();

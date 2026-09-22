@@ -1,7 +1,7 @@
 // 定型入力（ひな形の展開と計算）のテスト。外部通信なし: node test/templates-test.mjs
 import fs from 'node:fs';
 import assert from 'node:assert/strict';
-import { validateSet, expand, formatDate } from '../src/templates.js';
+import { validateSet, expand, formatDate, parseList } from '../src/templates.js';
 
 const set = validateSet(fs.readFileSync(new URL('../examples/templates-sample.json', import.meta.url), 'utf8'));
 const [train, allowance] = set.templates;
@@ -54,6 +54,20 @@ const obj = (list) => Object.fromEntries(list.map((e) => [e.key, e.value]));
   assert.equal(obj(expand(t, { a: '00:10' }).entries).b, '23:40');
 }
 assert.equal(formatDate('2026年3月5日'), '2026/03/05');
+
+// 一覧（複数日分）
+{
+  const list = { date: ['対象日', '対象期間'], times: ['出勤時刻', '退勤時刻'] };
+  const text = '- 2/3(火) 出勤 8:47 退勤 21:27\n- 2/4(水) 出勤 8:52 退勤 19:29\n2/7(土)\n見出し行\n・2026/12/28 9:04 19:03';
+  const rows = parseList(list, text, new Date(2026, 2, 5));
+  assert.equal(rows.length, 4, '日付の無い行は飛ばす');
+  assert.deepEqual(rows[0].values, { 対象日: '2026/02/03', 対象期間: '2026/02/03', 出勤時刻: '8:47', 退勤時刻: '21:27' });
+  assert.deepEqual(rows[2].values, { 対象日: '2026/02/07', 対象期間: '2026/02/07' }, '時刻の無い日は日付だけ');
+  assert.equal(rows[3].values['対象日'], '2026/12/28', '年があればそのまま');
+  // 年の無い12月分を1月に処理したら前年
+  assert.equal(parseList(list, '12/26 9:00 18:00', new Date(2027, 0, 10))[0].values['対象日'], '2026/12/26');
+  assert.deepEqual(parseList(null, text), []);
+}
 
 // 検査
 assert.throws(() => validateSet({ name: 'x', templates: [] }), /templates/);

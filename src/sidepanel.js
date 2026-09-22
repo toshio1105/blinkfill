@@ -3,7 +3,7 @@ import { PROFILE_SCHEMA } from './profile.js';
 import { loadProfiles, fillProfile } from './oneclick.js';
 import { PROVIDERS } from './ai.js';
 import { getAIConfig, saveAIConfig, activeAI } from './config.js';
-import { validateSet, expand } from './templates.js';
+import { validateSet, expand, parseList } from './templates.js';
 
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
@@ -124,7 +124,7 @@ async function runPlan(entries, structured, button) {
     await chrome.scripting.executeScript({ target: { tabId: tab.id, allFrames: true }, files: ['src/core.js'] });
     const frames = await chrome.scripting.executeScript({
       target: { tabId: tab.id, allFrames: true },
-      func: () => window.__jevAF?.scan(),
+      func: () => window.__jevAF?.scan({ checkboxes: true }),
     });
 
     const fields = [];
@@ -153,6 +153,7 @@ async function runPlan(entries, structured, button) {
     const total = Math.round(performance.now() - t0);
     const aiNote = stats.requests ? `（うち${PROVIDERS[aiNow.provider].label.replace(/（.*）/, '')} ${stats.ms}ms・${stats.requests}回）` : '';
     status(`${plan.length}/${fields.length}欄を割り当て ${total}ms${aiNote}`, 'res-ok');
+    return plan.length > 0;
   } catch (e) {
     status(e.message, 'res-ng');
   } finally {
@@ -416,8 +417,61 @@ function renderTemplate() {
   }).join('');
   $('tplNotes').innerHTML = (t.notes || []).map((n) => `<li>${esc(n)}</li>`).join('');
   document.querySelectorAll('#tplFields [data-k]').forEach((i) => { i.oninput = onTplInput; i.onchange = onTplInput; });
+  renderList();
   renderTplOut();
 }
+
+// --- 一覧（複数日分）: セットに "list" があるときだけ出す。一覧と選んだ行はセットごとに残す
+const currentSetName = () => tplState.sel.slice(0, tplState.sel.lastIndexOf('|'));
+function listRows() {
+  return parseList(sets[currentSetName()]?.list, $('tplList').value);
+}
+function renderList() {
+  const set = sets[currentSetName()];
+  $('tplListBox').classList.toggle('hide', !set?.list);
+  if (!set?.list) return;
+  tplState.lists ??= {};
+  tplState.rows ??= {};
+  $('tplList').value = tplState.lists[currentSetName()] || '';
+  if ($('tplList').value) $('tplListBox').open = true;
+  renderRows();
+  // ひな形を切り替えたら、選んでいる行の値を入れ直す（打刻修正 → 休憩申請で同じ日を続けて入れる）
+  if (listRows().length) applyRow();
+}
+function renderRows() {
+  const rows = listRows();
+  const i = Math.min(tplState.rows[currentSetName()] || 0, Math.max(rows.length - 1, 0));
+  $('tplRow').innerHTML = rows.map((r, k) => `<option value="${k}" ${k === i ? 'selected' : ''}>${k + 1}/${rows.length}: ${esc(r.label)}</option>`).join('')
+    || '<option value="">（日付のある行がありません）</option>';
+  $('tplNext').disabled = i >= rows.length - 1;
+}
+function applyRow() {
+  const rows = listRows();
+  const i = Number($('tplRow').value) || 0;
+  const row = rows[i];
+  if (!row) return;
+  tplState.rows[currentSetName()] = i;
+  document.querySelectorAll('#tplFields [data-k]').forEach((el) => {
+    const v = row.values[el.dataset.k];
+    if (v == null) return;
+    el.value = el.type === 'date' ? v.replace(/\//g, '-') : v;
+  });
+  $('tplNext').disabled = i >= rows.length - 1;
+  $('planCard').classList.add('hide');
+  onTplInput();
+}
+$('tplList').oninput = () => {
+  tplState.lists[currentSetName()] = $('tplList').value;
+  chrome.storage.local.set({ tplState });
+  renderRows();
+};
+$('tplRow').onchange = applyRow;
+$('tplNext').onclick = () => {
+  const n = $('tplRow').options.length;
+  $('tplRow').selectedIndex = Math.min($('tplRow').selectedIndex + 1, n - 1);
+  applyRow();
+  $('tplStatus').textContent = '';
+};
 
 // 計算した値と、画面には入れない値（ファイル名など）を表示する
 function renderTplOut() {
@@ -451,7 +505,8 @@ $('tplPlan').onclick = async () => {
   const t = currentTemplate();
   if (!t) return;
   const { entries } = expand(t, tplValues());
-  await runPlan(entries, true, $('tplPlan'));
+  // 定型入力は割り当てたらそのまま入力まで進める（確信度の低いAIの割り当ては入れない）
+  if (await runPlan(entries, true, $('tplPlan'))) await $('fill').onclick();
 };
 
 $('importSet').onclick = () => $('setFile').click();

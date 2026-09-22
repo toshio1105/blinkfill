@@ -91,8 +91,9 @@ export function matchByName(fields, entries, taken = new Set()) {
     if (taken.has(f.id)) continue;
     const L = norm(f.label);
     if (!L) continue;
+    // チェックボックスは名前が完全に一致したときだけ（「出勤」と「出勤時刻」を取り違えない）
     const e = entries.find((x) => norm(x.key) === L)
-      || entries.find((x) => norm(x.key).length >= 2 && (L.includes(norm(x.key)) || norm(x.key).includes(L)));
+      || f.type !== 'checkbox' && entries.find((x) => norm(x.key).length >= 2 && (L.includes(norm(x.key)) || norm(x.key).includes(L)));
     if (e) plan.push({ id: f.id, label: f.label, key: e.key, value: e.value, entryValue: e.value, confidence: 0.9, source: 'name' });
   }
   return plan;
@@ -106,6 +107,7 @@ export function buildQuestions(fields, entries) {
   const questions = {};
   const decode = {};
   for (const f of fields) {
+    if (f.type === 'checkbox') continue;   // チェックボックスは AI に推測させない
     if (f.type === 'select') {
       if (!f.options?.length || f.options.length > MAX_OPTIONS) continue;
       const criteria = {};

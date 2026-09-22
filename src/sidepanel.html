@@ -131,12 +131,20 @@
         <span class="lbl">ひな形</span>
         <div class="select"><select id="tplSel" aria-label="ひな形"></select></div>
       </label>
+      <details id="tplListBox" class="tpl-list hide">
+        <summary>一覧から選ぶ（複数日分）</summary>
+        <textarea id="tplList" rows="5" placeholder="1行に1日分。例)&#10;2/3(火) 出勤 8:47 退勤 21:27&#10;2/4(水) 出勤 8:52 退勤 19:29"></textarea>
+        <div class="with-btn">
+          <div class="select"><select id="tplRow" aria-label="入れる行"></select></div>
+          <button class="btn" id="tplNext">次の行 ▶</button>
+        </div>
+      </details>
       <div id="tplFields"></div>
       <div id="tplOut" class="tpl-out hide"></div>
       <ul id="tplNotes" class="tpl-notes"></ul>
       <button class="btn primary big" id="tplPlan">
         <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6"/><path d="M20 20l-4.5-4.5"/></svg>
-        この画面に割り当て
+        この画面に入力
       </button>
       <p class="status" id="tplStatus" role="status"></p>
     </section>

@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="ja"><head><meta charset="utf-8"><title>模擬 勤怠申請</title>
+<style>body{font:14px sans-serif;margin:20px} td{padding:4px 8px}</style></head>
+<body>
+<h1>打刻修正申請（模擬）</h1>
+<p>チェックボックスとラベルの組み合わせ、表形式のラベル、送信ボタンを含む画面。</p>
+<table>
+  <tr><th>対象日</th><td><input type="text" id="day"></td></tr>
+  <tr><th>申請打刻</th><td><input type="checkbox" id="in"><label for="in">出勤</label></td></tr>
+  <tr><th>ｼﾌﾄ区分</th><td><select id="shift"><option value=""></option><option value="A">通常915-1730</option><option value="B">早番800-1630</option></select></td></tr>
+  <tr><th>出勤時刻</th><td><input type="text" id="inTime"> <label><input type="checkbox" id="inCancel">取消</label></td></tr>
+  <tr><th>申請打刻</th><td><label><input type="checkbox" id="out" checked>退勤</label></td></tr>
+  <tr><th>退勤時刻</th><td><input type="text" id="outTime"></td></tr>
+  <tr><th></th><td><label><input type="checkbox" id="nobreak">休憩取得無</label></td></tr>
+  <tr><th>理由</th><td><input type="text" id="reason"></td></tr>
+</table>
+<button type="submit" id="submit" onclick="document.body.dataset.submitted='1'">申請</button>
+</body></html>

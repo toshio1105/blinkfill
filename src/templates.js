@@ -14,8 +14,10 @@
 //                    "fill": true, "hint": "..." }],
 //     "computed": [{ "key": "欄名", "op": "...", ..., "fill": true }],   // 下の OPS を参照
 //     "notes":    ["入力時の注意", ...]
-//   }]
+//   }],
+//   "list": { "date": ["欄名"], "times": ["欄名", ...] }      // 任意。複数日分の一覧から1行ずつ入れる（parseList）
 // }
+// 値が「✓」などのキーは、同じ名前のチェックボックスをオンにする（「無」「いいえ」などならオフ）。
 // fill: false の欄・計算結果は画面には入れず、パネルに表示するだけ（コピー用のファイル名など）。
 
 const TIME = /^(\d{1,2}):(\d{2})$/;
@@ -136,4 +138,41 @@ export function expand(template, inputs = {}) {
     (noFill.has(key) ? display : entries).push({ key, value: String(value) });
   }
   return { entries, display, computed };
+}
+
+// ---------------------------------------------------------------------------
+// 一覧（複数日分）: 「2/3(火) 出勤 8:47 退勤 21:27」のような行を貼っておき、1行ずつ選んで入れる。
+// ひな形ファイルの "list": { "date": ["対象日", ...], "times": ["出勤時刻", "退勤時刻"], "hint": "..." }
+//   各行の最初の日付を date の欄に、時刻を出てきた順に times の欄に入れる
+// ---------------------------------------------------------------------------
+const LIST_DATE = /(?:(\d{4})[\/\-年.])?(\d{1,2})[\/\-月.](\d{1,2})日?/;
+const LIST_TIME = /(?<![\d:])(\d{1,2}:\d{2})(?![\d:])/g;
+
+// 年の無い日付は、now に近い年にする（1月に12月分を処理しても前年になるように）
+function withYear(y, m, d, now) {
+  if (y) return `${y}/${m.padStart(2, '0')}/${d.padStart(2, '0')}`;
+  let year = now.getFullYear();
+  const t = new Date(year, Number(m) - 1, Number(d));
+  if (t - now > 62 * 86400000) year -= 1;
+  else if (now - t > 300 * 86400000) year += 1;
+  return `${year}/${m.padStart(2, '0')}/${d.padStart(2, '0')}`;
+}
+
+export function parseList(list, text, now = new Date()) {
+  if (!list) return [];
+  const dates = [].concat(list.date ?? []);
+  const times = [].concat(list.times ?? []);
+  const rows = [];
+  for (const raw of String(text ?? '').split(/\r?\n/)) {
+    const line = raw.replace(/^[\s\-・*●]+/, '').trim();
+    const dm = line.match(LIST_DATE);
+    if (!dm) continue;
+    const values = {};
+    const date = withYear(dm[1], dm[2], dm[3], now);
+    dates.forEach((k) => { values[k] = date; });
+    const rest = line.slice(dm.index + dm[0].length);
+    [...rest.matchAll(LIST_TIME)].slice(0, times.length).forEach((m, i) => { values[times[i]] = m[1]; });
+    rows.push({ label: line, values });
+  }
+  return rows;
 }

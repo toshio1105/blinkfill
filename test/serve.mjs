@@ -8,6 +8,7 @@ const routes = {
   '/': ['fixture.html', 'text/html; charset=utf-8'],
   '/core.js': ['../src/core.js', 'text/javascript; charset=utf-8'],
   '/profile': ['profile.html', 'text/html; charset=utf-8'],
+  '/kintai': ['kintai.html', 'text/html; charset=utf-8'],
 };
 // サイドパネルの画面テスト用: chrome.* を模擬してから本物の sidepanel.html を出す
 const CHROME_STUB = `<base href="/src/"><script>

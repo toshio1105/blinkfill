@@ -157,3 +157,7 @@ table.plan{width:100%;border-collapse:collapse;font-size:12px}
 .tpl-notes:empty{display:none}
 .set-row{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:12.5px;padding:4px 0}
 .set-row small{color:var(--muted)}
+.tpl-list{border:1px solid var(--line);border-radius:8px;padding:8px 10px;margin:0 0 12px}
+.tpl-list summary{cursor:pointer;font-size:12px;font-weight:600;color:var(--accent)}
+.tpl-list[open] summary{margin-bottom:8px}
+.tpl-list textarea{margin-bottom:8px}
