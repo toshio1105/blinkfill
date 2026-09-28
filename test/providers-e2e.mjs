@@ -24,7 +24,17 @@ const EXPECT = { '経費タイプ': '国内交通費（新幹線・特急）', '
 // SDK も含めて外への送信を全部記録する
 const sent = [];
 const realFetch = globalThis.fetch;
-globalThis.fetch = (url, init = {}) => { sent.push(String(init.body ?? '')); return realFetch(url, init); };
+// Request を組み立て直して記録する。init だけを渡し直すと、SDK が Request で呼ぶ場合に
+// 認証ヘッダーが落ちて 401 になる
+globalThis.fetch = async (input, init) => {
+  try {
+    const req = new Request(input, init);
+    sent.push(await req.clone().text());
+    return realFetch(req);
+  } catch {
+    return realFetch(input, init);
+  }
+};
 
 const CASES = [
   ['jev', 'TYPESAFE_API_KEY', 'jev-latest'],

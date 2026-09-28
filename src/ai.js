@@ -50,7 +50,7 @@ export async function askChoices({ provider = 'jev', apiKey, model, state, quest
       if (cur.length >= JEV_BATCH && !questions[`${id}__src`]) { chunks.push(cur); cur = []; }
     }
     if (cur.length) chunks.push(cur);
-    const results = await Promise.all(chunks.map(async (chunk) => {
+    const results = await Promise.all(chunks.map((chunk) => withRetry(async () => {
       const res = await fetchImpl('https://api.typesafe.ai/v1/systemone', {
         method: 'POST',
         headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
@@ -61,7 +61,7 @@ export async function askChoices({ provider = 'jev', apiKey, model, state, quest
       });
       await raiseFor(res, 'Jev');
       return (await res.json()).answers ?? {};
-    }));
+    })));
     const answers = {};
     for (const r of results) for (const [id, a] of Object.entries(r)) answers[id] = { choice: a?.choice, confidence: a?.confidence ?? 0 };
     return { answers, ms: Math.round(performance.now() - t0), requests: chunks.length };
@@ -70,9 +70,9 @@ export async function askChoices({ provider = 'jev', apiKey, model, state, quest
   // --- LLM: 全部の質問を1回で聞き、{質問ID: 選択肢キー} の JSON で返させる ---
   const { system, user } = llmPrompt(state, questions);
   let text;
-  if (provider === 'openai') text = await callOpenAI({ apiKey, model, system, user, fetchImpl });
-  else if (provider === 'anthropic') text = await callClaude({ apiKey, model, system, user });
-  else if (provider === 'gemini') text = await callGemini({ apiKey, model, system, user, fetchImpl });
+  if (provider === 'openai') text = await withRetry(() => callOpenAI({ apiKey, model, system, user, fetchImpl }));
+  else if (provider === 'anthropic') text = await withRetry(() => callClaude({ apiKey, model, system, user }));
+  else if (provider === 'gemini') text = await withRetry(() => callGemini({ apiKey, model, system, user, fetchImpl }));
   else throw new Error(`未対応のAI: ${provider}`);
 
   const parsed = parseJson(text);
@@ -107,8 +107,20 @@ function parseJson(text) {
 async function raiseFor(res, name) {
   if (res.ok) return;
   if (res.status === 401 || res.status === 403) throw new Error(`${name}のAPIキーが無効です`);
-  if (res.status === 429 || res.status === 529) throw new Error(`${name}が混雑しています。少し待って再実行してください`);
+  if (BUSY.has(res.status)) throw new Error(`${name}が混雑しています。少し待って再実行してください`);
   throw new Error(`${name} ${res.status}: ${(await res.text()).slice(0, 200)}`);
+}
+
+// 混雑（429 / 5xx）のときだけ、少し待って1回だけやり直す
+const BUSY = new Set([429, 500, 502, 503, 529]);
+async function withRetry(fn) {
+  try {
+    return await fn();
+  } catch (e) {
+    if (!/混雑/.test(e.message)) throw e;
+    await new Promise((r) => setTimeout(r, 700));
+    return fn();
+  }
 }
 
 async function callOpenAI({ apiKey, model, system, user, fetchImpl }) {

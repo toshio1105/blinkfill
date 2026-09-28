@@ -5,6 +5,10 @@ export function testKey(name) {
   if (process.env[name]) return process.env[name];
   const f = process.env.ENV_FILE;
   if (!f || !fs.existsSync(f)) return undefined;
-  const m = fs.readFileSync(f, 'utf8').match(new RegExp(`^\s*${name}\s*=\s*(.*?)\s*$`, 'm'));
-  return m?.[1];
+  // 1行ずつ見る。正規表現の \s は改行も含むため、空の値のときに次の行まで拾ってしまう
+  for (const line of fs.readFileSync(f, 'utf8').split(/\r?\n/)) {
+    const m = line.match(new RegExp(`^\\s*${name}\\s*=\\s*(.*?)\\s*$`));
+    if (m && m[1]) return m[1];
+  }
+  return undefined;
 }
