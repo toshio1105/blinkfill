@@ -106,10 +106,16 @@ const RULES = [
 ];
 
 function textOf(f) {
-  return [f.label, f.name, f.placeholder].filter(Boolean).join(' ');
+  return [f.section, f.label, f.name, f.placeholder].filter(Boolean).join(' ');
 }
 
+// ローマ字・英字で書くよう指定された欄。日本語をそのまま入れると誤りになるので触らない
+// （「住所(ローマ字)」のように、欄のラベルではなく見出し側に書かれていることが多い）
+const ROMAJI = /ローマ字|ローマジ|ヘボン|英字|アルファベット|半角英|romaji|alphabet|in english|english name/i;
+export const SKIP = '__skip__';
+
 function byRule(f) {
+  if (ROMAJI.test(textOf(f))) return SKIP;
   if (f.autocomplete) {
     const tokens = f.autocomplete.toLowerCase().split(/\s+/);
     for (const t of tokens) if (AUTOCOMPLETE[t]) return AUTOCOMPLETE[t];
@@ -190,7 +196,7 @@ export function buildProfileQuestions(fields) {
   for (const f of fields) {
     questions[f.id] = {
       type: 'choice',
-      instructions: `Webフォームの入力欄「${f.label}」（形式: ${f.type}${f.placeholder ? `、例: ${f.placeholder}` : ''}）は、どの個人情報を入れる欄か。個人情報の欄でなければ none。`,
+      instructions: `Webフォームの入力欄「${f.label}」${f.section ? `（見出し: ${f.section}）` : ''}（形式: ${f.type}${f.placeholder ? `、例: ${f.placeholder}` : ''}）は、どの個人情報を入れる欄か。個人情報の欄でなければ none。`,
       criteria,
     };
   }
@@ -206,6 +212,7 @@ export async function planProfile({ fields, profile, ai, useJev, apiKey, fetchIm
   const rest = [];
   for (const f of fields) {
     const key = byRuleMap.get(f.id);
+    if (key === SKIP) continue;                       // ローマ字指定の欄。AIにも聞かない
     if (key && values[key] != null) plan.push({ id: f.id, label: f.label, key, value: fitValue(f, key, values[key]), confidence: 1, source: 'rule' });
     else if (!key) rest.push(f);
   }

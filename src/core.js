@@ -88,6 +88,38 @@
     return clean(el.name || el.id || '');
   }
 
+  // その欄が属する「見出し」。表の行見出し（th）・fieldset の legend・直前の見出しを探す。
+  // 「住所(ローマ字)」のように、欄のラベルだけでは分からない条件がここに書かれていることがある
+  function sectionOf(el) {
+    const root = el.getRootNode();
+    const host = root instanceof ShadowRoot ? root.host : el;
+    const row = host.closest?.('tr');
+    const th = row?.querySelector('th') || row?.querySelector('td:first-child');
+    if (th && !th.contains(host)) {
+      const t = textOf(th);
+      if (t && t.length <= 60) return t;
+    }
+    const legend = host.closest?.('fieldset')?.querySelector('legend');
+    if (legend) {
+      const t = textOf(legend);
+      if (t && t.length <= 60) return t;
+    }
+    // 直前にある見出し要素
+    let cur = host;
+    for (let depth = 0; depth < 6 && cur; depth++) {
+      let sib = cur.previousElementSibling;
+      while (sib) {
+        if (/^H[1-6]$/.test(sib.tagName) || sib.classList?.contains('title')) {
+          const t = textOf(sib);
+          if (t && t.length <= 60) return t;
+        }
+        sib = sib.previousElementSibling;
+      }
+      cur = cur.parentElement;
+    }
+    return '';
+  }
+
   // checkboxes: true のときだけチェックボックスも読む（定型入力・貼り付け用。個人情報の入力では読まない）
   function scan({ checkboxes = false } = {}) {
     document.querySelectorAll(`[${ATTR}]`).forEach((e) => e.removeAttribute(ATTR));
@@ -115,7 +147,8 @@
         el.setAttribute(ATTR, id);
         const label = labelOf(el) || `(無名の${type}欄)`;
         const field = {
-          id, label, type, name: el.name || '', signature: `${label}|${el.name || ''}|${type}`,
+          id, label, type, name: el.name || '', section: sectionOf(el),
+          signature: `${label}|${el.name || ''}|${type}`,
           autocomplete: el.getAttribute('autocomplete') || '',
           placeholder: el.getAttribute('placeholder') || '',
           maxLength: el.maxLength > 0 ? el.maxLength : 0,

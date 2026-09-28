@@ -40,6 +40,25 @@
   <div class="row"><label for="st">番地</label><input id="st" name="addr_street"></div>
   <div class="row"><label for="bld">建物名・部屋番号</label><input id="bld" name="addr_building"></div>
 
+  <!-- 表形式: 見出しが左のセルにあり、欄のラベルだけでは日本語かローマ字か分からない -->
+  <h2>お届け先（表形式）</h2>
+  <table border="1" cellpadding="6" style="border-collapse:collapse">
+    <tr><th>住所</th><td>
+      <label for="t_city">市区町村</label> <input id="t_city" name="ship_city"><br>
+      <label for="t_st">丁目番地</label> <input id="t_st" name="ship_street"><br>
+      <label for="t_bld">建物名</label> <input id="t_bld" name="ship_building">
+    </td></tr>
+    <tr><th>住所(ローマ字)</th><td>
+      <label for="r_city">市区町村</label> <input id="r_city" name="ship_city_romaji"><br>
+      <label for="r_st">丁目番地</label> <input id="r_st" name="ship_street_romaji"><br>
+      <label for="r_bld">建物名</label> <input id="r_bld" name="ship_building_romaji">
+    </td></tr>
+    <tr><th>お名前(ローマ字)</th><td>
+      <label for="r_sei">姓</label> <input id="r_sei" name="name_sei_romaji">
+      <label for="r_mei">名</label> <input id="r_mei" name="name_mei_romaji">
+    </td></tr>
+  </table>
+
   <h2>その他</h2>
   <!-- 生年月日は年・月・日の3つのプルダウン -->
   <div class="row"><span>生年月日</span><span>

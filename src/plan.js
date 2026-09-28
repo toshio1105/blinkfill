@@ -115,7 +115,7 @@ export function buildQuestions(fields, entries) {
       criteria.none = '該当なし（この欄は変更しない）';
       questions[f.id] = {
         type: 'choice',
-        instructions: `業務フォームの選択欄「${f.label}」で、入力内容に最も合う項目はどれか。入力内容から判断できなければ none。`,
+        instructions: `業務フォームの選択欄「${f.label}」${f.section ? `（見出し: ${f.section}）` : ''}で、入力内容に最も合う項目はどれか。入力内容から判断できなければ none。`,
         criteria,
       };
       if (entries.length) {
@@ -134,7 +134,7 @@ export function buildQuestions(fields, entries) {
       criteria.none = '該当なし（空欄のまま）';
       questions[f.id] = {
         type: 'choice',
-        instructions: `業務フォームの入力欄「${f.label}」（形式: ${f.type}）に入れるべき値はどれか。対応する値が無ければ none。`,
+        instructions: `業務フォームの入力欄「${f.label}」${f.section ? `（見出し: ${f.section}）` : ''}（形式: ${f.type}）に入れるべき値はどれか。対応する値が無ければ none。`,
         criteria,
       };
     }
