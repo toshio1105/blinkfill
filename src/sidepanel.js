@@ -113,7 +113,7 @@ $('plan').onclick = async () => {
 };
 
 // 画面を読み取って、entries（[{key, value}]）をどの欄に入れるか決める
-async function runPlan(entries, structured, button) {
+async function runPlan(entries, structured, button, { noAI = false } = {}) {
   const t0 = performance.now();
   button.disabled = true;
   try {
@@ -121,7 +121,7 @@ async function runPlan(entries, structured, button) {
     if (!/^https?:/.test(tab.url || '')) { status('このページでは使えません', 'res-ng'); return; }
 
     status('画面を読み取り中…');
-    await chrome.scripting.executeScript({ target: { tabId: tab.id, allFrames: true }, files: ['src/core.js'] });
+    await inject(tab.id);
     const frames = await chrome.scripting.executeScript({
       target: { tabId: tab.id, allFrames: true },
       func: () => window.__jevAF?.scan({ checkboxes: true }),
@@ -143,7 +143,8 @@ async function runPlan(entries, structured, button) {
     scan = { tabId: tab.id, mapKey, fields, skipped, structured };
 
     status(`${fields.length}欄を割り当て中…`);
-    const aiNow = await activeAI();
+    // 定型入力は欄の名前どおりに書いてあるので、既定でAIを使わない（別の欄に入れてしまうのを防ぐ）
+    const aiNow = noAI ? null : await activeAI();
     const { plan, ai: stats } = await makePlan({ fields, entries, saved, ai: aiNow });
     current = plan;
     currentProvider = aiNow?.provider;
@@ -162,6 +163,59 @@ async function runPlan(entries, structured, button) {
 }
 
 let currentProvider = null;
+
+// --- ページ内で動かすための下ごしらえ ---------------------------------------
+async function inject(tabId) {
+  await chrome.scripting.executeScript({ target: { tabId, allFrames: true }, files: ['src/core.js'] });
+}
+
+// すべてのフレームで関数を動かし、使える結果を返す（pick が真になる結果を優先）
+async function inFrames(tabId, func, args = [], pick = (r) => r) {
+  const out = await chrome.scripting.executeScript({ target: { tabId, allFrames: true }, func, args });
+  const results = out.map((o) => o.result).filter(Boolean);
+  return results.find((r) => pick(r)) || results[0] || null;
+}
+
+// text が画面に出てくるまで待つ
+async function waitForText(tabId, text, ms = 12000) {
+  const until = Date.now() + ms;
+  for (;;) {
+    if (await inFrames(tabId, (t) => window.__jevAF?.hasText(t), [text])) return true;
+    if (Date.now() > until) return false;
+    await new Promise((r) => setTimeout(r, 300));
+  }
+}
+
+// ひな形の steps（入力画面を開くまでの操作）を順に実行する。
+// 押すのはメニューや一覧の項目だけ。保存・提出・申請に当たる語は core.js 側で拒否する。
+async function runSteps(steps, tabId, doFill) {
+  for (const [i, st] of steps.entries()) {
+    const label = st.click || st.wait || (st.fill ? '入力' : Object.keys(st.type || {}).join('・'));
+    status(`${i + 1}/${steps.length}: ${label}`);
+    if (st.fill) { await doFill(); continue; }
+    if (st.wait) {
+      if (!(await waitForText(tabId, st.wait))) throw new Error(`「${st.wait}」が出てきませんでした`);
+      continue;
+    }
+    if (st.type) {
+      const scanned = await inFrames(tabId, () => window.__jevAF?.scan({ checkboxes: true }), [], (r) => r?.fields?.length);
+      const fields = scanned?.fields || [];
+      for (const [labelText, value] of Object.entries(st.type)) {
+        const f = fields.find((x) => x.label === labelText) || fields.find((x) => x.label.includes(labelText));
+        if (!f) throw new Error(`「${labelText}」の欄が見つかりませんでした`);
+        await inFrames(tabId, (a) => window.__jevAF?.fill([a]), [{ id: f.id, value }]);
+      }
+      continue;
+    }
+    if (!st.click) continue;
+    if (!(await waitForText(tabId, st.click))) throw new Error(`「${st.click}」が出てきませんでした`);
+    const r = await inFrames(tabId, (t) => window.__jevAF?.clickText(t), [st.click], (x) => x?.status === 'ok');
+    if (r?.status !== 'ok') {
+      throw new Error(r?.status === 'blocked' ? r.reason : `「${st.click}」を押せませんでした（${r?.status || 'エラー'}）`);
+    }
+    await new Promise((done) => setTimeout(done, 400));
+  }
+}
 
 function render() {
   const aiName = currentProvider ? PROVIDERS[currentProvider].label.replace(/（.*）/, '') : 'AI';
@@ -416,6 +470,8 @@ function renderTemplate() {
     return `<label class="field"><span class="lbl">${esc(f.label || f.key)}${f.fill === false ? '（計算用）' : ''}${hint}</span>${input}</label>`;
   }).join('');
   $('tplNotes').innerHTML = (t.notes || []).map((n) => `<li>${esc(n)}</li>`).join('');
+  // steps があるひな形は、画面を開くところから始める
+  $('tplPlanLabel').textContent = t.steps?.length ? '画面を開いて入力' : 'この画面に入力';
   document.querySelectorAll('#tplFields [data-k]').forEach((i) => { i.oninput = onTplInput; i.onchange = onTplInput; });
   renderList();
   renderTplOut();
@@ -505,8 +561,28 @@ $('tplPlan').onclick = async () => {
   const t = currentTemplate();
   if (!t) return;
   const { entries } = expand(t, tplValues());
+  // ひな形に steps があれば、入力画面を開くところまで先に進める
+  if (t.steps?.length) {
+    $('tplPlan').disabled = true;
+    try {
+      const tab = await activeTab();
+      if (!/^https?:/.test(tab.url || '')) { status('このページでは使えません', 'res-ng'); return; }
+      await inject(tab.id);
+      await runSteps(t.steps, tab.id, () => fillNow(t, entries));
+    } catch (e) {
+      status(e.message, 'res-ng');
+      return;
+    } finally {
+      $('tplPlan').disabled = false;
+    }
+  }
   // 定型入力は割り当てたらそのまま入力まで進める（確信度の低いAIの割り当ては入れない）
-  if (await runPlan(entries, true, $('tplPlan'))) await $('fill').onclick();
+  await fillNow(t, entries);
+};
+
+// 割り当てて、そのまま入力する（確信度の低いAIの割り当ては入れない）
+async function fillNow(t, entries) {
+  if (await runPlan(entries, true, $('tplPlan'), { noAI: !t.useAI })) await $('fill').onclick();
 };
 
 $('importSet').onclick = () => $('setFile').click();

@@ -2,12 +2,13 @@
 // chrome.* には依存しない（テストでは素のページに読み込んで同じコードを検証する）。
 //
 // 守ること:
-// - 送信・保存ボタンは絶対に押さない（click はチェックボックスの切り替えにだけ使う）
+// - 送信・保存・申請ボタンは絶対に押さない（whyNotClick を通らない要素は click しない）
+// - click はチェックボックスの切り替えと、ひな形の steps（画面を開くまでの操作）にだけ使う
 // - パスワード欄とカード欄には触らない
 // - 画面に入っている既存の値は外に出さない（scan の戻り値に含めない）
 (() => {
   // 古い版が注入済みのタブでも、新しい版で置き換える
-  if (window.__jevAF?.version >= 2) return;
+  if (window.__jevAF?.version >= 3) return;
 
   const SKIP_TYPES = new Set([
     'hidden', 'password', 'file', 'submit', 'button', 'reset', 'image',
@@ -259,6 +260,63 @@
     return results;
   }
 
+  // --- ひな形の steps（入力画面を開くまでの操作） --------------------------
+  // 保存・提出・申請などに当たる語を含む要素は、絶対にクリックしない
+  // 文字のどこかに出てきたら押さない
+  const NEVER = /保存|提出|送信|削除|承認|却下|支払|submit|save|delete|remove|approve|reject/i;
+  // その文字だけのボタンは押さない（TimePro の「申請」ボタンなど）
+  const NEVER_EXACT = new Set(['申請', '申請する', '確定', '確定する', '実行', '送る', 'OK', 'はい', '登録']);
+  // ボタンの形をしていて、この語を含むなら押さない（メニューの「打刻修正申請」などは押せる）
+  const NEVER_ON_BUTTON = /申請|確定|実行|登録|精算/;
+  const BUTTONISH = 'button,[type=submit],[type=button],[role=button]';
+
+  function whyNotClick(el, t) {
+    if (NEVER.test(t)) return '保存・提出などは押しません';
+    if (NEVER_EXACT.has(t)) return `「${t}」ボタンは押しません`;
+    if (NEVER_ON_BUTTON.test(t) && el?.matches?.(BUTTONISH)) return `「${t}」ボタンは押しません（申請・確定に当たるため）`;
+    return null;
+  }
+  const CLICKABLE = 'button,a,[role=button],[role=menuitem],[role=menuitemradio],[role=option],[role=tab],[role=link],li,td,div,span,p';
+
+  function isClickable(el) {
+    if (el.matches('button,a,[role=button],[role=menuitem],[role=menuitemradio],[role=option],[role=tab],[role=link]')) return true;
+    if (el.onclick || el.getAttribute('tabindex') !== null) return true;
+    return getComputedStyle(el).cursor === 'pointer';
+  }
+
+  // 画面のどこかに text があるか（steps の待ち合わせに使う）
+  function hasText(text) {
+    const want = clean(text);
+    for (const root of roots(document)) {
+      const host = root === document ? document.body : root;
+      if (host && textOf(host).includes(want)) return true;
+    }
+    return false;
+  }
+
+  function clickText(text) {
+    const want = clean(text);
+    if (!want) return { status: 'no-text' };
+    if (NEVER.test(want) || NEVER_EXACT.has(want)) return { status: 'blocked', reason: whyNotClick(null, want) };
+    let best = null;
+    let bestLen = Infinity;
+    for (const root of roots(document)) {
+      for (const el of root.querySelectorAll(CLICKABLE)) {
+        const t = textOf(el);
+        if (!t || !t.includes(want) || t.length > want.length + 30) continue;
+        if (whyNotClick(el, t)) continue;
+        if (!isVisible(el) || !isClickable(el)) continue;
+        if (t.length < bestLen) { best = el; bestLen = t.length; }
+      }
+    }
+    if (!best) return { status: 'not-found' };
+    const why = whyNotClick(best, textOf(best));
+    if (why) return { status: 'blocked', reason: why };
+    best.scrollIntoView({ block: 'center' });
+    best.click();
+    return { status: 'ok', text: textOf(best) };
+  }
+
   function highlight(el, color) {
     el.style.setProperty('outline', `2px solid ${color}`, 'important');
     el.style.setProperty('outline-offset', '1px', 'important');
@@ -283,5 +341,5 @@
     }
   }
 
-  window.__jevAF = { scan, fill, preview, clearMarks, version: 2 };
+  window.__jevAF = { scan, fill, preview, clearMarks, clickText, hasText, version: 3 };
 })();

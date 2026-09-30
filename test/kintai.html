@@ -2,6 +2,14 @@
 <html lang="ja"><head><meta charset="utf-8"><title>模擬 勤怠申請</title>
 <style>body{font:14px sans-serif;margin:20px} td{padding:4px 8px}</style></head>
 <body>
+<nav style="margin-bottom:12px">
+  <a href="#" id="menu1">届出処理</a>
+  <ul id="sub" style="list-style:none;padding:0">
+    <li><a href="#" id="m1">打刻修正申請</a></li>
+    <li><a href="#" id="m2">時間外勤務/休憩申請</a></li>
+    <li><a href="#" id="m3">在宅勤務申請</a></li>
+  </ul>
+</nav>
 <h1>打刻修正申請（模擬）</h1>
 <p>チェックボックスとラベルの組み合わせ、表形式のラベル、送信ボタンを含む画面。</p>
 <table>
@@ -14,5 +22,6 @@
   <tr><th></th><td><label><input type="checkbox" id="nobreak">休憩取得無</label></td></tr>
   <tr><th>理由</th><td><input type="text" id="reason"></td></tr>
 </table>
+<button type="submit" id="apply" onclick="document.body.dataset.applied='1'">申請</button>
 <button type="submit" id="submit" onclick="document.body.dataset.submitted='1'">申請</button>
 </body></html>

@@ -15,6 +15,10 @@
 //     "computed": [{ "key": "欄名", "op": "...", ..., "fill": true }],   // 下の OPS を参照
 //     "notes":    ["入力時の注意", ...]
 //   }],
+//     "steps":    [{ "click": "ボタン名" } | { "type": { "欄名": "値" } } | { "wait": "出てくる文字" }
+//                  | { "fill": true }]   // fill はその時点で入力する（2画面に分かれる経路検索など）
+//                 // 任意。入力画面を開くまでの操作。保存・提出・申請に当たる語はクリックしない
+//   }],
 //   "list": { "date": ["欄名"], "times": ["欄名", ...] }      // 任意。複数日分の一覧から1行ずつ入れる（parseList）
 // }
 // 値が「✓」などのキーは、同じ名前のチェックボックスをオンにする（「無」「いいえ」などならオフ）。
@@ -93,6 +97,10 @@ const OPS = {
 };
 export const OP_NAMES = Object.keys(OPS);
 
+// steps でクリックしない語（core.js の NEVER_CLICK と同じ。読み込んだときに気づけるよう、ここでも見る）
+const NEVER_CLICK = /保存|提出|送信|削除|承認|却下|支払|submit|save|delete|remove|approve|reject/i;
+const NEVER_CLICK_EXACT = new Set(['申請', '申請する', '確定', '確定する', '実行', '送る', 'OK', 'はい', '登録']);
+
 // 読み込んだ JSON の検査。問題があれば Error を投げる
 export function validateSet(json) {
   const set = typeof json === 'string' ? JSON.parse(json) : json;
@@ -104,6 +112,10 @@ export function validateSet(json) {
     const where = `${i + 1}番目のひな形`;
     if (!String(t?.name ?? '').trim()) throw new Error(`${where}に name がありません`);
     for (const f of t.fields ?? []) if (!f?.key) throw new Error(`${where}（${t.name}）: fields に key の無い項目があります`);
+    for (const st of t.steps ?? []) {
+      if (!st || (!st.click && !st.wait && !st.type && !st.fill)) throw new Error(`${where}（${t.name}）: steps は click / type / wait / fill のどれかが必要です`);
+      if (st.click && (NEVER_CLICK.test(st.click) || NEVER_CLICK_EXACT.has(st.click))) throw new Error(`${where}（${t.name}）: 「${st.click}」は押しません（保存・提出・申請などのボタンは対象外）`);
+    }
     for (const c of t.computed ?? []) {
       if (!c?.key) throw new Error(`${where}（${t.name}）: computed に key の無い項目があります`);
       if (!OPS[c.op]) throw new Error(`${where}（${t.name}）: 計算「${c.op}」は使えません（使えるもの: ${OP_NAMES.join(', ')}）`);

@@ -9,6 +9,7 @@ const routes = {
   '/core.js': ['../src/core.js', 'text/javascript; charset=utf-8'],
   '/profile': ['profile.html', 'text/html; charset=utf-8'],
   '/kintai': ['kintai.html', 'text/html; charset=utf-8'],
+  '/add': ['addexpense.html', 'text/html; charset=utf-8'],
 };
 // サイドパネルの画面テスト用: chrome.* を模擬してから本物の sidepanel.html を出す
 const CHROME_STUB = `<base href="/src/"><script>
@@ -19,10 +20,38 @@ const CHROME_STUB = `<base href="/src/"><script>
       set: async (o) => { Object.assign(store, JSON.parse(JSON.stringify(o))); },
       remove: async (k) => { [].concat(k).forEach((x) => delete store[x]); },
     } },
-    tabs: { query: async () => [{ id: 1, url: 'http://localhost:5188/profile' }] },
-    scripting: { executeScript: async () => [] },
+    tabs: { query: async () => [{ id: 1, url: location.hash.slice(1) || 'http://localhost:5188/profile' }] },
+    // ?target=/add を付けると、その画面を iframe に出して本当に読み取り・入力・steps を試せる
+    scripting: { executeScript: async ({ func, args = [], files }) => {
+      const w = document.getElementById('__target')?.contentWindow;
+      if (!w) return [];
+      if (files) {
+        for (const f of files) {
+          await new Promise((ok) => {
+            const s = w.document.createElement('script');
+            s.src = '/' + f.replace(/^src\\//, '') + '?' + Date.now();
+            s.onload = ok; s.onerror = ok;
+            w.document.head.appendChild(s);
+          });
+        }
+        return [{ frameId: 0, result: null }];
+      }
+      const result = await w.eval('(' + func.toString() + ')(...' + JSON.stringify(args) + ')');
+      return [{ frameId: 0, result }];
+    } },
   };
   window.__store = store;
+  const target = new URLSearchParams(location.search).get('target');
+  if (target) {
+    addEventListener('DOMContentLoaded', () => {
+      const f = document.createElement('iframe');
+      f.id = '__target'; f.src = target;
+      f.style.cssText = 'position:fixed;left:0;top:0;width:60vw;height:100vh;border:0;border-right:2px solid #c8643c';
+      document.body.appendChild(f);
+      document.body.style.marginLeft = '60vw';
+      location.hash = new URL(target, location.href).href;
+    });
+  }
 </script>`;
 
 http.createServer((req, res) => {

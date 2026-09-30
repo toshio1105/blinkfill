@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="ja"><head><meta charset="utf-8"><title>模擬 経費を追加</title>
+<style>
+ body{font:14px sans-serif;margin:20px}
+ .menu,.modal,.form{display:none}
+ .menu.on,.modal.on,.form.on{display:block}
+ .item{cursor:pointer;padding:6px 10px;border-bottom:1px solid #eee;max-width:420px}
+ .item:hover{background:#f3f3f3}
+ label{display:block;margin:8px 0 2px;color:#555;font-size:12px}
+ input,select{padding:6px;width:320px}
+ .bar{display:flex;gap:8px;margin-bottom:12px}
+</style></head>
+<body>
+<div class="bar">
+  <button id="add">経費を追加 ▾</button>
+  <button id="submitReport">レポートの提出</button>
+</div>
+
+<div class="menu" id="menu">
+  <div class="item" id="mkNew">新しい経費を作成</div>
+  <div class="item">レポートに追加できる経費を選択 (475)</div>
+</div>
+
+<div class="modal" id="modal">
+  <h2>レポートに経費を追加</h2>
+  <input id="q" placeholder="検索">
+  <div id="types">
+    <div class="item" data-t="01.駅すぱあと（経路検索）">01.駅すぱあと（経路検索）</div>
+    <div class="item" data-t="05.国内出張手当">05.国内出張手当</div>
+    <div class="item" data-t="01.飲食">01.飲食</div>
+    <div class="item" data-t="05.会合費 1人1万円以下の飲食">05.会合費 1人1万円以下の飲食</div>
+  </div>
+</div>
+
+<!-- 経路検索（2画面） -->
+<div class="form" id="route">
+  <h2>経路検索</h2>
+  <label>乗車日</label><input id="rDay">
+  <label>時刻</label><input id="rTime">
+  <label>出発駅</label><input id="rFrom">
+  <label>到着駅</label><input id="rTo">
+  <label>片道/往復</label><select id="rTrip"><option value=""></option><option>片道</option><option>往復</option></select>
+  <label><input type="checkbox" id="rIc">ICカード運賃</label>
+  <p><button id="rSearch">検索</button></p>
+  <div id="rResult" style="display:none">
+    <p>日暮里 → 上野 ¥310</p>
+    <button id="rPick">経路選択</button>
+  </div>
+</div>
+
+<div class="form" id="detail">
+  <h2>01.駅すぱあと（経路検索）</h2>
+  <label>経費タイプ</label><input id="dType" value="01.駅すぱあと（経路検索）" readonly>
+  <label>目的・用途</label><input id="dPurpose">
+  <label>訪問先</label><input id="dVisit">
+  <label>登録番号（T+数字13桁）の有無</label><select id="dReg"><option value=""></option><option>01.登録番号あり</option><option>02.登録番号なし</option></select>
+  <label>金額</label><input id="dAmount" value="310" readonly>
+  <p><button id="dSave" onclick="document.body.dataset.saved='1'">経費の保存</button></p>
+</div>
+
+<div class="form" id="form">
+  <h2>新しい経費</h2>
+  <label>経費タイプ</label><input id="etype" readonly>
+  <label>出発日</label><input id="d1">
+  <label>早出有無 ※新幹線8:44/飛行機9:14までに出勤の場合【有】</label>
+  <select id="early"><option value=""></option><option>01.有</option><option>02.無</option></select>
+  <label>主要交通機関出発時刻</label><input id="t1">
+  <label>帰着日</label><input id="d2">
+  <label>遅着有無 ※新幹線17:00/飛行機16:30以降に到着の場合【有】</label>
+  <select id="late"><option value=""></option><option>01.有</option><option>02.無</option></select>
+  <label>主要交通機関帰着時刻</label><input id="t2">
+  <label>宿泊数</label><input id="nights">
+  <label>非業務日数</label><input id="off">
+  <p><button id="save" onclick="document.body.dataset.saved='1'">経費の保存</button></p>
+</div>
+
+<script>
+  add.onclick = () => menu.classList.add('on');
+  mkNew.onclick = () => { menu.classList.remove('on'); setTimeout(() => modal.classList.add('on'), 100); };
+  q.oninput = () => { for (const el of types.children) el.style.display = el.dataset.t.includes(q.value) ? '' : 'none'; };
+  for (const el of types.children) el.onclick = () => {
+    modal.classList.remove('on');
+    etype.value = el.dataset.t;
+    const isRoute = el.dataset.t.includes('駅すぱあと');
+    setTimeout(() => (isRoute ? route : form).classList.add('on'), 150);
+  };
+  rSearch.onclick = () => { setTimeout(() => rResult.style.display = 'block', 100); };
+  rPick.onclick = () => { route.classList.remove('on'); setTimeout(() => detail.classList.add('on'), 150); };
+  submitReport.onclick = () => { document.body.dataset.submitted = '1'; };
+</script>
+</body></html>
